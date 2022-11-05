@@ -10,7 +10,7 @@ assert(false, 'focus on getting a working swing')
 
 --[[
 
-## current user story
+## current user story: be able to swing at a ball
 
 [x] init
 [x] draw
@@ -24,6 +24,26 @@ assert(false, 'focus on getting a working swing')
         [ ] up arrow to aim up
         [ ] left/right arrows to position in batter box
         [ ] down arrow to aim down
+
+## mvp user stories
+
+## unsorted user stories
+
+* batters
+* runners
+* batter game loop: balls and strikes
+* inning game loop: 3 outs per team
+* win/lose condition
+* z-sorting of entities
+* art
+* sound effects and music
+* title screen
+* some kind of tutorial
+* first playtest session
+* ai for opposing team
+* game juice
+* dynamic camera
+* bat is a lightsaber
 
 ]]
 

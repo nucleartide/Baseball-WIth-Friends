@@ -1,0 +1,443 @@
+pico-8 cartridge // http://www.pico-8.com
+version 38
+__lua__
+
+--
+-- vec3 class.
+--
+
+function vec3(x, y, z)
+	return {
+		x = x or 0,
+		y = y or 0,
+		z = z or 0,
+	}
+end
+
+function vec3_lerp_into(v1, v2, v3, t)
+	v3.x = lerp(v1.x, v2.x, t)
+	v3.y = lerp(v1.y, v2.y, t)
+	v3.z = lerp(v1.z, v2.z, t)
+	return v3
+end
+
+function vec3_to_screen(v)
+	return v.x+64,v.y+64
+end
+
+function vec3_from_screen(sx, sy, v)
+	v.x = sx - 64
+	v.y = sy - 64
+	v.z = 0
+end
+
+-- check whether vector v1 is in circle defined by v2 and r.
+-- note that the z components of v1 and v2 are unused.
+function vec3_in_circle(v1, v2, r)
+	local d = distance(v1, v2)
+	return d <= r
+end
+
+function vec3_print(v, to_console)
+	local func = to_console and printh or print
+	func(v.x .. ',' .. v.y .. ',' .. v.z)
+end
+
+function vec3_set(v1, v2)
+	v1.x = v2.x
+	v1.y = v2.y
+	v1.z = v2.z
+	return v1
+end
+
+function vec3_add_to(v1, v2)
+	v1.x += v2.x
+	v1.y += v2.y
+	v1.z += v2.z
+	return v1
+end
+
+function vec3_sub_from(v1, v2)
+	v1.x -= v2.x
+	v1.y -= v2.y
+	v1.z -= v2.z
+	return v1
+end
+
+function vec3_mul(v1, c)
+	v1.x *= c
+	v1.y *= c
+	v1.z *= c
+	return v1
+end
+
+function vec3_zero(v)
+	v.x = 0
+	v.y = 0
+	v.z = 0
+end
+
+function vec3_raise(v, height)
+	local new = vec3_set(vec3(), v)
+	new.y += height
+	return new
+end
+
+-- return distance in case you want to do something with it
+function vec3_normalize(v)
+	local d =distance2(vec3(), v)
+	v.x /= d
+	v.y /= d
+	v.z /= d
+	return d
+end
+
+--
+-- math utilities.
+--
+
+function lerp(a, b, t)
+	return (1-t)*a + t*b
+end
+
+function distance(v1, v2)
+	local dx = abs(v2.x - v1.x)
+	local dy = abs(v2.y - v1.y)
+	return sqrt(dx*dx + dy*dy)
+end
+
+-- a revised distance function more amenable to large numbers.
+function distance2(a, b, ignore_x, ignore_y, ignore_z)
+  -- scale inputs down by 6 bits
+  local dx=(a.x-b.x)/64
+  local dy=(a.y-b.y)/64
+  local dz=(a.z-b.z)/64
+  if (ignore_x) dx=0
+  if (ignore_y) dy=0
+  if (ignore_z) dz=0
+
+  -- get distance squared
+  local dsq=dx*dx+dy*dy+dz*dz
+
+  -- in case of overflow/wrap
+  if(dsq<0) then return 32767.99999 end
+
+  -- scale output back up by 6 bits
+  return sqrt(dsq)*64
+end
+
+-- compute n points along a curve defined by cubic_bezier_func,
+-- and return the n points in a lua table.
+function arclength(n, cubic_bezier_func)
+	local total_dist, total_dists, dists_between_points = 0, {}, {}
+
+	for i=0,n-1 do
+		-- calculate current and next points.
+		local v1, v2 = vec3(), vec3()
+		cubic_bezier_sample(cubic_bezier_func, i/n, v1)
+		cubic_bezier_sample(cubic_bezier_func, (i+1)/n, v2)
+
+		-- get the distance between the 2 points.
+		local d = distance2(v1, v2)
+
+		-- store in dists_between_points,
+		-- where index is current total_dist.
+		dists_between_points[total_dist] = {v1, v2, d}
+
+		-- store total_dist in total_dists,
+		-- where index is 1..n
+		add(total_dists, total_dist)
+
+		-- update total_dist.
+		total_dist += d
+	end
+
+	-- total_dists is indexed by 1..n
+	-- dists_between_points is indexed by total_dist, and returns {v1, v2, dist_between_points}
+	return total_dist, total_dists, dists_between_points
+end
+
+--
+-- draw utilities.
+--
+
+circle_r = 4
+
+function draw_line(p1, p2)
+	local sx1,sy1 = vec3_to_screen(p1)
+	local sx2,sy2 = vec3_to_screen(p2)
+	line(sx1, sy1, sx2, sy2, 7)
+end
+
+function draw_circle(p1, highlight)
+	local sx,sy = vec3_to_screen(p1)
+	circ(sx, sy, circle_r, highlight and 8 or 7)
+end
+
+--
+-- cubic bezier class.
+--
+
+function cubic_bezier(v1, v2, v3, v4)
+	return {v1, v2, v3, v4}
+end
+
+do
+	local p5, p6, p7, p8, p9 = vec3(), vec3(), vec3(), vec3(), vec3() -- 3 intermediary points, 2 final points
+
+	-- note: use cubic_bezier_fixed_sample instead.
+	function cubic_bezier_sample(c, t, final_p)
+		local p1 = c[1]
+		local p2 = c[2]
+		local p3 = c[3]
+		local p4 = c[4]
+
+		-- intermediary points
+		vec3_lerp_into(p1, p2, p5, t)
+		vec3_lerp_into(p2, p3, p6, t)
+		vec3_lerp_into(p3, p4, p7, t)
+
+		-- 2nd intermediary points
+		vec3_lerp_into(p5, p6, p8, t)
+		vec3_lerp_into(p6, p7, p9, t)
+
+		-- final point
+		vec3_lerp_into(p8, p9, final_p, t)
+	end
+end
+
+do
+local temp_vec = vec3()
+
+-- map t to fixed_t so that you are sampling more evenly.
+-- num_points:        number of points to compute
+-- t:                 interpolation parameter
+-- cubic_bezier_func: cubic bezier funtion
+function cubic_bezier_fixed_sample(num_points, cubic_bezier_func, t, result_vec)
+	-- gather values from arclength function.
+	local total_dist, total_dists, dists_between_points = arclength(num_points, cubic_bezier_func)
+
+	-- get distance along the arclength.
+	local normalized_t, nearest_total_dist = t * total_dist, nil
+
+	-- given the distance, compute the nearest point on the arclength.
+	for d in all(total_dists) do
+		-- find the nearest point that is passed by normalized_t.
+		if (normalized_t - d) < 0 then break end
+		nearest_total_dist = d
+	end
+
+	-- lerp between the nearest point on the arclength and its neighbor to get an approximation.
+	local dist_between_points = dists_between_points[nearest_total_dist]
+	local v1, v2, d = dist_between_points[1], dist_between_points[2], dist_between_points[3]
+	local percent = (normalized_t - nearest_total_dist) / d
+
+	-- v1 + (v2 - v1) * percent
+	vec3_set(temp_vec, v2)
+	vec3_sub_from(temp_vec, v1)
+	vec3_mul(temp_vec, percent)
+	vec3_add_to(temp_vec, v1)
+	vec3_set(result_vec, temp_vec)
+	return result_vec
+end
+end
+
+-- this is used only for debugging.
+-- if you are using a cubic bezier to animate another object, you probably don't need to draw the line out explicitly.
+function cubic_bezier_draw(c, highlighted_point)
+	local p1 = c[1]
+	local p2 = c[2]
+	local p3 = c[3]
+	local p4 = c[4]
+	local p5, p6, p7, p8, p9, p10 = vec3(), vec3(), vec3(), vec3(), vec3(), vec3() -- 3 intermediary points, 2 final points
+
+	local incr=.01
+	local sx1,sy1,sx2,sy2
+	for t=0,1,incr do
+		-- intermediary points
+		vec3_lerp_into(p1, p2, p5, t)
+		vec3_lerp_into(p2, p3, p6, t)
+		vec3_lerp_into(p3, p4, p7, t)
+
+		-- 2nd intermediary points
+		vec3_lerp_into(p5, p6, p8, t)
+		vec3_lerp_into(p6, p7, p9, t)
+
+		-- final point
+		vec3_lerp_into(p8, p9, p10, t)
+		sx1,sy1=vec3_to_screen(p10)
+
+		-- intermediary points
+		vec3_lerp_into(p1, p2, p5, t+incr)
+		vec3_lerp_into(p2, p3, p6, t+incr)
+		vec3_lerp_into(p3, p4, p7, t+incr)
+
+		-- 2nd intermediary points
+		vec3_lerp_into(p5, p6, p8, t+incr)
+		vec3_lerp_into(p6, p7, p9, t+incr)
+
+		-- final point
+		vec3_lerp_into(p8, p9, p10, t+incr)
+		sx2,sy2=vec3_to_screen(p10)
+
+		line(sx1, sy1, sx2, sy2, 7)
+	end
+
+	draw_circle(p1, p1 == highlighted_point)
+	draw_circle(p2, p2 == highlighted_point)
+	draw_circle(p3, p3 == highlighted_point)
+	draw_circle(p4, p4 == highlighted_point)
+
+	draw_line(p1, p2)
+	draw_line(p2, p3)
+	draw_line(p3, p4)
+end
+
+--
+-- quadratic bezier class.
+--
+
+--[[
+function quadratic_bezier(v1, v2, v3)
+	return {v1, v2, v3}
+end
+
+function quadratic_bezier_draw(q)
+	local p1 = q[1]
+	local p2 = q[2]
+	local p3 = q[3]
+	local p4 = vec3()
+	local p5 = vec3()
+	local p6 = vec3()
+	local p7 = vec3()
+
+	local incr=.01
+	for t=0,1,incr do
+		vec3_lerp_into(p1, p2, p4, t)
+		vec3_lerp_into(p2, p3, p5, t)
+		vec3_lerp_into(p4, p5, p6, t)
+
+		vec3_lerp_into(p1, p2, p4, t+incr)
+		vec3_lerp_into(p2, p3, p5, t+incr)
+		vec3_lerp_into(p4, p5, p7, t+incr)
+
+		local sx1,sy1=vec3_to_screen(p6)
+		local sx2,sy2=vec3_to_screen(p7)
+
+		line(sx1,sy1,sx2,sy2,7)
+	end
+
+	draw_circle(p1)
+	draw_circle(p2)
+	draw_circle(p3)
+	draw_line(p1, p2)
+	draw_line(p2, p3)
+end
+]]
+
+-- no_y is used for shadows.
+function old_world2screen(o,no_y)	
+	-- world 2 camera
+	local x = o.x
+	local y = max(o.y, 0) -- cannot be negative.
+    local z = o.z
+    z += 64 -- since our home plate is at the origin, and we are disallowing negative numbers, offset z so stuff isn't warped.
+	z = max(z, 0) -- cannot be negative.
+
+	if no_y then y=0 end
+	local pz = 1+z*.01
+	local ppz = 1+z*.01
+	
+	-- camera 2 screen
+	-- x smaller as z increases
+	-- z smaller as z increases
+	-- y smaller as z increases
+	-- x larger as y increases
+	sx = 64+(x/pz+y*x*.01/pz)*1.75
+	sy = 64-(z/pz+y/pz)*1.75+64 -- 1.5 to magnify, 64 to undo the previous offset
+	return sx,sy
+end
+
+-- no_y is used for shadows.
+function world2screen(o,no_y)	
+	-- world 2 camera
+	local x = o.x
+	local y = max(o.y, 0) -- cannot be negative.
+    local z = o.z
+    z += 64 -- since our home plate is at the origin, and we are disallowing negative numbers, offset z so stuff isn't warped.
+	z = max(z, 0) -- cannot be negative.
+
+	if no_y then y=0 end
+	local pz = 1+z*.01
+	local ppz = 1+z*.01
+	
+	-- camera 2 screen
+	-- x smaller as z increases
+	-- z smaller as z increases
+	-- y smaller as z increases
+	-- x larger as y increases
+	sx = 64+(x/pz+y*x*.01/pz)*1.75
+	sy = 64-(z/pz+y/pz)*1.75+64 -- 1.5 to magnify, 64 to undo the previous offset
+	return sx,sy
+end
+
+-- modulo operator that works with lua indices, which start at 1.
+function luamod(i, mod)
+    return (i-1)%mod+1
+end
+
+-- returns true on the frame that btn() transitions from true to false.
+-- note: remember to call btnr_update() at the start of your game's update function, otherwise btnr() will not be accurate.
+do
+    local prev = {false, false, false, false, false, false}
+    local prev1 = {false, false, false, false, false, false}
+    local curr = {false, false, false, false, false, false}
+    local curr1 = {false, false, false, false, false, false}
+
+    function btnr(i, player)
+        if player==1 then
+            return prev1[i+1] and not curr1[i+1]
+        end
+        return prev[i+1] and not curr[i+1]
+    end
+
+    function btnr_update()
+        -- set prev to curr
+        for i=1,6 do
+            prev[i] = curr[i]
+            prev1[i] = curr1[i]
+        end
+
+        -- update curr
+        for i=0,5 do
+            curr[i+1] = btn(i)
+            curr1[i+1] = btn(i, 1)
+        end
+    end
+
+    function btnr_print()
+        for i=0,5 do
+            print(btnr(i) .. ';' .. btnr(i,1))
+        end
+    end
+end
+
+function assign(obj1, obj2)
+	for k,v in pairs(obj2) do
+		obj1[k] = v
+	end
+	return obj1
+end
+
+function concat(list1, list2)
+	local list3 = {}
+	for obj in all(list1) do add(list3, obj) end
+	for obj in all(list2) do add(list3, obj) end
+	return list3
+end
+
+function worldspace(parent_pos, pos)
+	local v = vec3_add_to(vec3(), parent_pos)
+	vec3_add_to(v, pos)
+	return v
+end

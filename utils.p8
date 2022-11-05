@@ -3,7 +3,7 @@ version 38
 __lua__
 
 --
--- vec3 class.
+-- ## vec3 operations.
 --
 
 function vec3(x, y, z)
@@ -93,7 +93,7 @@ function vec3_normalize(v)
 end
 
 --
--- math utilities.
+-- ## general math utilities.
 --
 
 function lerp(a, b, t)
@@ -126,6 +126,60 @@ function distance2(a, b, ignore_x, ignore_y, ignore_z)
   return sqrt(dsq)*64
 end
 
+-- modulo operator that works with lua indices, which start at 1.
+function luamod(i, mod)
+    return (i-1)%mod+1
+end
+
+--
+-- ## general drawing utilities.
+--
+
+circle_r = 4
+
+function draw_line(p1, p2)
+	local sx1,sy1 = vec3_to_screen(p1)
+	local sx2,sy2 = vec3_to_screen(p2)
+	line(sx1, sy1, sx2, sy2, 7)
+end
+
+function draw_circle(p1, highlight)
+	local sx,sy = vec3_to_screen(p1)
+	circ(sx, sy, circle_r, highlight and 8 or 7)
+end
+
+--
+-- ## cubic bezier operations.
+--
+
+function cubic_bezier(v1, v2, v3, v4)
+	return {v1, v2, v3, v4}
+end
+
+do
+	local p5, p6, p7, p8, p9 = vec3(), vec3(), vec3(), vec3(), vec3() -- 3 intermediary points, 2 final points
+
+	-- note: use cubic_bezier_fixed_sample instead.
+	function cubic_bezier_sample(c, t, final_p)
+		local p1 = c[1]
+		local p2 = c[2]
+		local p3 = c[3]
+		local p4 = c[4]
+
+		-- intermediary points
+		vec3_lerp_into(p1, p2, p5, t)
+		vec3_lerp_into(p2, p3, p6, t)
+		vec3_lerp_into(p3, p4, p7, t)
+
+		-- 2nd intermediary points
+		vec3_lerp_into(p5, p6, p8, t)
+		vec3_lerp_into(p6, p7, p9, t)
+
+		-- final point
+		vec3_lerp_into(p8, p9, final_p, t)
+	end
+end
+
 -- compute n points along a curve defined by cubic_bezier_func,
 -- and return the n points in a lua table.
 function arclength(n, cubic_bezier_func)
@@ -155,55 +209,6 @@ function arclength(n, cubic_bezier_func)
 	-- total_dists is indexed by 1..n
 	-- dists_between_points is indexed by total_dist, and returns {v1, v2, dist_between_points}
 	return total_dist, total_dists, dists_between_points
-end
-
---
--- draw utilities.
---
-
-circle_r = 4
-
-function draw_line(p1, p2)
-	local sx1,sy1 = vec3_to_screen(p1)
-	local sx2,sy2 = vec3_to_screen(p2)
-	line(sx1, sy1, sx2, sy2, 7)
-end
-
-function draw_circle(p1, highlight)
-	local sx,sy = vec3_to_screen(p1)
-	circ(sx, sy, circle_r, highlight and 8 or 7)
-end
-
---
--- cubic bezier class.
---
-
-function cubic_bezier(v1, v2, v3, v4)
-	return {v1, v2, v3, v4}
-end
-
-do
-	local p5, p6, p7, p8, p9 = vec3(), vec3(), vec3(), vec3(), vec3() -- 3 intermediary points, 2 final points
-
-	-- note: use cubic_bezier_fixed_sample instead.
-	function cubic_bezier_sample(c, t, final_p)
-		local p1 = c[1]
-		local p2 = c[2]
-		local p3 = c[3]
-		local p4 = c[4]
-
-		-- intermediary points
-		vec3_lerp_into(p1, p2, p5, t)
-		vec3_lerp_into(p2, p3, p6, t)
-		vec3_lerp_into(p3, p4, p7, t)
-
-		-- 2nd intermediary points
-		vec3_lerp_into(p5, p6, p8, t)
-		vec3_lerp_into(p6, p7, p9, t)
-
-		-- final point
-		vec3_lerp_into(p8, p9, final_p, t)
-	end
 end
 
 do
@@ -294,7 +299,9 @@ function cubic_bezier_draw(c, highlighted_point)
 end
 
 --
--- quadratic bezier class.
+-- ## quadratic bezier operations.
+--
+-- it is preferable to use cubic_bezier, so this is commented out.
 --
 
 --[[
@@ -334,6 +341,10 @@ function quadratic_bezier_draw(q)
 	draw_line(p2, p3)
 end
 ]]
+
+--
+-- ## transformation functions.
+--
 
 -- no_y is used for shadows.
 function old_world2screen(o,no_y)	
@@ -381,10 +392,15 @@ function world2screen(o,no_y)
 	return sx,sy
 end
 
--- modulo operator that works with lua indices, which start at 1.
-function luamod(i, mod)
-    return (i-1)%mod+1
+function worldspace(parent_pos, pos)
+	local v = vec3_add_to(vec3(), parent_pos)
+	vec3_add_to(v, pos)
+	return v
 end
+
+--
+-- ## general input utilities.
+--
 
 -- returns true on the frame that btn() transitions from true to false.
 -- note: remember to call btnr_update() at the start of your game's update function, otherwise btnr() will not be accurate.
@@ -422,6 +438,10 @@ do
     end
 end
 
+--
+-- ## general object utilities.
+--
+
 function assign(obj1, obj2)
 	for k,v in pairs(obj2) do
 		obj1[k] = v
@@ -434,10 +454,4 @@ function concat(list1, list2)
 	for obj in all(list1) do add(list3, obj) end
 	for obj in all(list2) do add(list3, obj) end
 	return list3
-end
-
-function worldspace(parent_pos, pos)
-	local v = vec3_add_to(vec3(), parent_pos)
-	vec3_add_to(v, pos)
-	return v
 end

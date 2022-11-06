@@ -6,7 +6,7 @@ __lua__
 
 #include utils.p8
 
-assert(false, 'focus on getting a working swing')
+-- assert(false, 'focus on getting a working swing')
 
 --[[
 
@@ -273,6 +273,10 @@ function batter(x, z, player_num)
 end
 
 function update_batter(b, ball1)
+    if b.player_num==nil then
+        return
+    end
+
     -- hold x to charge
     if btnp(4, b.player_num) then
         b.state = batter_charging
@@ -759,7 +763,7 @@ function init_game()
         fielder(fpos[1], nil, nil, false),
         fielder(fpos[2], nil, nil, false),
         fielder(fpos[3], nil, nil, false),
-        fielder(fpos[4], nil, nil, true),
+        fielder(fpos[4], 1, nil, true),
         pitcher(
             fpos[5],
             raised_pitcher_mound,
@@ -822,7 +826,7 @@ function init_game()
     }
 
     batters = {
-        batter(bases[1].x - 5, bases[1].z, 1)
+        batter(bases[1].x - 5, bases[1].z, nil)
     }
 end
 
@@ -859,7 +863,7 @@ end
 function draw_game()
     cls(3)
 
-    print('has ball:' .. tostr(fielders[5].ball~=nil))
+    -- print('has ball:' .. tostr(fielders[5].ball~=nil))
 
     -- draw base lines
     for i=1,#bases do

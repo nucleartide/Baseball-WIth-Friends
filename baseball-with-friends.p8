@@ -414,6 +414,7 @@ function draw_batter(b)
         --
         -- todo: working on drawing batter reticle.
         -- take out your yellow notepad.
+        -- todo: make sure this is solid. i don't want to revisit.
         --
         assert(false)
     elseif b.state==batter_swinging then

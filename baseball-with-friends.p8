@@ -242,14 +242,28 @@ batter_swinging = 2
 -- no running as of now.
 
 -- batter can bat and run.
-function batter(x, z, player_num)
+function batter(x, z, player_num, handedness)
     return assign(player(vec3(x,0,z), player_num), {
         state = batter_batting,
+
         -- animation timer.
         t = 0,
+
+        -- animation lengths (in frames).
         charging_anim_len = 10,
         swing_anim_len = .5*60,
+
+        -- 'left' | 'right'
+        handedness = handedness or 'right',
+
+        -- in local space relative to batter pos.
+        -- flipped depending on handedness.
+        bat_aim_vec = vec3(5, 0, 0),
     })
+end
+
+function get_batter_half_height(b)
+    return vec3(b.pos.x, 4, b.pos.z)
 end
 
 function update_batter(b, ball1)
@@ -324,7 +338,7 @@ function swing(batter, ball1)
             -- todo: this needs tweaking, but is good enough for now.
             ball1.vel.x = x_diff
             ball1.vel.y = 30 * y_diff/10
-            ball1.vel.z = 30 + 30 * z_diff/10
+            ball1.vel.z = 30 - 50 * z_diff/10
             ball1.state = ball_idle_physical_obj
         end
     end
@@ -374,13 +388,14 @@ end
 
 function draw_batter(b)
     player_draw(b)
-
-    --
-    -- draw baseball stick
-    --
-
     local bx, by = world2screen(b.pos)
+
     if b.state==batter_batting or b.state==batter_charging then
+
+        --
+        -- draw baseball bat.
+        --
+
         local high_point_x, high_point_y = bx - b.side*2, by - b.h
         local low_point_x, low_point_y = bx + b.side*2, by - b.h*.5
         for i=0,1 do
@@ -388,12 +403,27 @@ function draw_batter(b)
             if b.t>(b.charging_anim_len*.5) then c = 8 end
             line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
         end
+
+        --
+        -- draw baseball bat preview.
+        --
+
+        local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
+        circ(ax, ay, 2, 6)
+
+        --
+        -- todo: working on drawing batter reticle.
+        -- take out your yellow notepad.
+        --
+        assert(false)
     elseif b.state==batter_swinging then
+    --[[
         local high_point_x, high_point_y = bx, by - b.h*.5
         local low_point_x, low_point_y = bx + b.side*4, by
         for i=0,1 do
             line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, 9)
         end
+    ]]
     end
 end
 

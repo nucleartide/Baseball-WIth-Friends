@@ -10,7 +10,7 @@ __lua__
 
 --[[
 
-## current user story: be able to swing at a ball
+As a batter, I want to be able to hit the ball, so that the ball is in play and I can start running toward first base.
 
 [x] init
 [x] draw
@@ -24,26 +24,6 @@ __lua__
         [ ] up arrow to aim up
         [ ] left/right arrows to position in batter box
         [ ] down arrow to aim down
-
-## mvp user stories
-
-## unsorted user stories
-
-* batters
-* runners
-* batter game loop: balls and strikes
-* inning game loop: 3 outs per team
-* win/lose condition
-* z-sorting of entities
-* art
-* sound effects and music
-* title screen
-* some kind of tutorial
-* first playtest session
-* ai for opposing team
-* game juice
-* dynamic camera
-* bat is a lightsaber
 
 ]]
 
@@ -333,10 +313,20 @@ function swing(batter, ball1)
         local z_diff = ball1.pos.z - batter.pos.z
 
         -- throw with difference results.
-        assert(false, x_diff .. ',' .. y_diff .. ',' .. z_diff)
+        -- if abs(x difference) is <= 10, then it's within range of bat.
+        -- if abs(y difference) is <= 10, then it's within range of bat.
+        -- if abs(z difference) is <= 10, then it's within range of bat.
+        if x_diff<=10 and y_diff<=10 and z_diff<=10 then
+            -- assert(false, x_diff .. ',' .. y_diff .. ',' .. z_diff)
 
-        -- if x difference is negative, then it's within range of bat.
-        -- if x difference is positive, then it's a miss.
+            -- set the velocity of the ball
+            -- ball1.vel.x = 0
+            -- todo: this needs tweaking, but is good enough for now.
+            ball1.vel.x = x_diff
+            ball1.vel.y = 30 * y_diff/10
+            ball1.vel.z = 30 + 30 * z_diff/10
+            ball1.state = ball_idle_physical_obj
+        end
     end
 end
 
@@ -552,7 +542,7 @@ function ball(pos, initial_state)
 
         -- throw animation.
         t = 0, -- timer field used for animation.
-        throw_duration = .5*60, -- 1 second for now.
+        throw_duration = 2*60, -- this is dynamically set elsewhere.
 
         -- if a catcher doesn't catch the ball at the end,
         -- sample from the bezier curve past t=1.
@@ -614,7 +604,8 @@ function throw_ball(b, starting_vec, ending_vec, dest_player)
     -- reset animation fields.
     b.t = 0
     local d = distance2(start, endpoint)
-    b.throw_duration = d / 200 * 60
+    -- b.throw_duration = d / 200 * 60
+    b.throw_duration = 3 * 60
 
     -- set the ball's state, we'll need it to know whether we are animating.
     b.state = ball_throwing
@@ -625,8 +616,8 @@ end
 
 function pick_up_ball_if_nearby(b, fielders)
     for f in all(fielders) do
-        local d = distance2(f.pos, b.pos, nil, true, nil)
-        if d<5 then
+        local d = distance2(f.pos, b.pos, nil, nil, nil)
+        if d<2 then
             f.ball = b
             b.state = ball_holding
         end
@@ -755,7 +746,7 @@ function init_game()
         vec3(half_diagonal, 0, 0),
         vec3(0, 0, half_diagonal),
         vec3(-half_diagonal, 0, 0),
-        vec3(0, 0, -half_diagonal),
+        vec3(0, 0, -half_diagonal - 5),
         vec3(),
     }
 
@@ -763,7 +754,7 @@ function init_game()
         fielder(fpos[1], nil, nil, false),
         fielder(fpos[2], nil, nil, false),
         fielder(fpos[3], nil, nil, false),
-        fielder(fpos[4], 1, nil, true),
+        fielder(fpos[4], nil, nil, true),
         pitcher(
             fpos[5],
             raised_pitcher_mound,
@@ -826,7 +817,7 @@ function init_game()
     }
 
     batters = {
-        batter(bases[1].x - 5, bases[1].z, nil)
+        batter(bases[1].x - 5, bases[1].z, 1)
     }
 end
 

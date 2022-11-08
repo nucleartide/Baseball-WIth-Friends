@@ -70,8 +70,8 @@ function player_move(p)
     end
 end
 
-function player_draw(p)
-    local sx, sy = world2screen(p.pos)
+function player_draw(p, force_pos)
+    local sx, sy = world2screen(force_pos or p.pos)
     rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, 8)
     return sx, sy
 end
@@ -242,8 +242,23 @@ batter_swinging = 2
 -- no running as of now.
 
 -- batter can bat and run.
-function batter(x, z, player_num, handedness)
+function batter(x, z, player_num, handedness, home_plate_pos)
+    assert(home_plate_pos~=nil)
+
+    -- [x] player's position.
+    -- [x] handedness.
+    -- [x] home plate position.
+    -- [x] rel_to_home_plate_pos.
+    -- [x] get_batter_worldspace()
+    -- [x] get_batter_half_body_worldspace()
+    -- [ ] bat aim vector (relative to get_batter_half_body_worldspace)
+
+    handedness = handedness or 'right'
+    local rel_to_home_plate_x = handedness=='right' and -5 or 5
+    local bat_aim_x = handedness=='right' and 5 or -5
+
     return assign(player(vec3(x,0,z), player_num), {
+        -- state of player.
         state = batter_batting,
 
         -- animation timer.
@@ -256,14 +271,35 @@ function batter(x, z, player_num, handedness)
         -- 'left' | 'right'
         handedness = handedness or 'right',
 
-        -- in local space relative to batter pos.
-        -- flipped depending on handedness.
-        bat_aim_vec = vec3(5, 0, 0),
+        -- relative to get_batter_Half_body_worldspace.
+        bat_aim_vec = vec3(bat_aim_x, 0, 0),
+
+        -- home plate pos reference.
+        home_plate_pos = home_plate_pos,
+
+        -- relative to home_plate_pos.
+        rel_to_home_plate_pos = vec3(rel_to_home_plate_x, 0, 0),
     })
 end
 
-function get_batter_half_height(b)
-    return vec3(b.pos.x, b.h*.5, b.pos.z)
+function get_batter_worldspace(b)
+    return worldspace(
+        b.home_plate_pos,
+        b.rel_to_home_plate_pos
+    )
+end
+
+function get_batter_half_body_worldspace(b)
+    local pos = get_batter_worldspace(b)
+    pos.y = b.h/2
+    return pos
+end
+
+function get_batter_aim_pos(b)
+    return worldspace(
+        get_batter_half_body_worldspace(b),
+        b.bat_aim_vec
+    )
 end
 
 function update_batter(b, ball1)
@@ -387,46 +423,43 @@ function __batter_check_for_hit(b, batter_reticle, home_plate_vec, ball_pos, bal
 end
 
 function draw_batter(b)
-    player_draw(b)
-    local bx, by = world2screen(b.pos)
+    -- determine world pos.
+    local world_pos = get_batter_worldspace(b)
 
+    -- draw player body.
+    player_draw(b, world_pos)
+
+    -- determine batter screen space.
+    local bx, by = world2screen(world_pos)
+
+    -- draw bat.
     if b.state==batter_batting or b.state==batter_charging then
+        -- determine whether to flip.
+        local scale = 1
+        if b.handedness == 'left' then scale *= -1 end
 
-        --
-        -- draw baseball bat.
-        --
+        -- determine points of bat.
+        local high_point_x, high_point_y = bx - b.side*2*scale, by - b.h
+        local low_point_x, low_point_y = bx + b.side*2*scale, by - b.h*.5
 
-        local high_point_x, high_point_y = bx - b.side*2, by - b.h
-        local low_point_x, low_point_y = bx + b.side*2, by - b.h*.5
+        -- actually draw bat.
         for i=0,1 do
             local c = 9
             if b.t>(b.charging_anim_len*.5) then c = 8 end
             line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
         end
-
     elseif b.state==batter_swinging then
-
-        --
-        -- draw the baseball bat.
-        --
-
+        -- determine points of bat.
         local high_point_x, high_point_y = bx, by - b.h*.5
-        local low_point_x, low_point_y = bx + b.side*4, by
-        local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
-        for i=0,1 do
-            line(high_point_x, high_point_y-i, ax, ay-i, 9)
-        end
 
+        -- actually draw bat.
+        local ax, ay = world2screen(get_batter_aim_pos(b))
+        for i=0,1 do line(high_point_x, high_point_y-i, ax, ay-i, 9) end
     end
 
-    --
     -- draw baseball bat preview.
-    --
-
-    local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
+    local ax, ay = world2screen(get_batter_aim_pos(b))
     circ(ax, ay, 2, 6)
-
-    -- right and left handed batters.
 end
 
 --
@@ -849,7 +882,7 @@ function init_game()
     }
 
     batters = {
-        batter(bases[1].x - 5, bases[1].z, 1)
+        batter(bases[1].x - 5, bases[1].z, 1, 'left', bases[1])
     }
 end
 

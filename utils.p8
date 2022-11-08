@@ -50,6 +50,10 @@ function vec3_set(v1, v2)
 	return v1
 end
 
+function vec3_flip(v)
+	return vec3(v.x*-1, v.y, v.z)
+end
+
 function vec3_add_to(v1, v2)
 	v1.x += v2.x
 	v1.y += v2.y

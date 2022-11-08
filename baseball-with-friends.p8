@@ -791,6 +791,9 @@ end
 -->8
 -- game loop.
 
+game_batting = 0
+game_ball_in_play = 1
+
 function init_game()
 
     --
@@ -800,6 +803,12 @@ function init_game()
     half_diagonal = 50 -- in world units.
     gravity = -20
     offset = 5 -- used for visually offsetting pitch actions from pitcher.
+
+    --
+    -- game state.
+    --
+
+    game_state = game_batting
 
     --
     -- game objects.

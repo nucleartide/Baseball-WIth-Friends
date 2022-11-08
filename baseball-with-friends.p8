@@ -6,7 +6,7 @@ __lua__
 
 #include utils.p8
 
--- assert(false, 'focus on getting a working swing')
+assert(false, 'implement batter state')
 
 --[[
 

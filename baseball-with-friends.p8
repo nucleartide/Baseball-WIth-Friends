@@ -263,7 +263,7 @@ function batter(x, z, player_num, handedness)
 end
 
 function get_batter_half_height(b)
-    return vec3(b.pos.x, 4, b.pos.z)
+    return vec3(b.pos.x, b.h*.5, b.pos.z)
 end
 
 function update_batter(b, ball1)
@@ -404,28 +404,29 @@ function draw_batter(b)
             line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
         end
 
-        --
-        -- draw baseball bat preview.
-        --
-
-        local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
-        circ(ax, ay, 2, 6)
-
-        --
-        -- todo: working on drawing batter reticle.
-        -- take out your yellow notepad.
-        -- todo: make sure this is solid. i don't want to revisit.
-        --
-        assert(false)
     elseif b.state==batter_swinging then
-    --[[
+
+        --
+        -- draw the baseball bat.
+        --
+
         local high_point_x, high_point_y = bx, by - b.h*.5
         local low_point_x, low_point_y = bx + b.side*4, by
+        local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
         for i=0,1 do
-            line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, 9)
+            line(high_point_x, high_point_y-i, ax, ay-i, 9)
         end
-    ]]
+
     end
+
+    --
+    -- draw baseball bat preview.
+    --
+
+    local ax, ay = world2screen(worldspace(get_batter_half_height(b), b.bat_aim_vec))
+    circ(ax, ay, 2, 6)
+
+    -- right and left handed batters.
 end
 
 --

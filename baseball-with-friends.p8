@@ -335,6 +335,22 @@ function update_batter(b, ball1)
             b.state = batter_batting
         end
     end
+
+    -- if player is batting,
+    if b.state==batter_batting then
+        if btn(0, b.player_num) then
+            b.rel_to_home_plate_pos.x -= .1
+        end
+        if btn(1, b.player_num) then
+            b.rel_to_home_plate_pos.x += .1
+        end
+        if btn(2, b.player_num) then
+            b.bat_aim_vec.y+=.5
+        end
+        if btn(3, b.player_num) then
+            b.bat_aim_vec.y-=.5
+        end
+    end
 end
 
 function swing(batter, ball1)

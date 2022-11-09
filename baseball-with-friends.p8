@@ -6,8 +6,6 @@ __lua__
 
 #include utils.p8
 
-assert(false, 'implement batter state')
-
 --[[
 
 As a batter, I want to be able to hit the ball, so that the ball is in play and I can start running toward first base.
@@ -235,15 +233,22 @@ function update_fielder(f, _unused, on_select_teammate, on_throw)
     end
 end
 
+--
+-- batter entity.
+--
+
 -- batter states.
 batter_batting = 0
 batter_charging = 1
 batter_swinging = 2
+batter_running_unsafe = 3
+batter_running_safe = 4
 -- no running as of now.
 
 -- batter can bat and run.
-function batter(x, z, player_num, handedness, home_plate_pos)
+function batter(x, z, player_num, handedness, home_plate_pos, bases)
     assert(home_plate_pos~=nil)
+    assert(bases~=nil)
 
     -- [x] player's position.
     -- [x] handedness.
@@ -259,9 +264,11 @@ function batter(x, z, player_num, handedness, home_plate_pos)
 
     return assign(player(vec3(x,0,z), player_num), {
         -- state of player.
-        state = batter_batting,
+        -- state = batter_batting,
+        state = batter_running_unsafe,
 
         -- animation timer.
+        -- in the case of running, this ranges from [0,1]
         t = 0,
 
         -- animation lengths (in frames).
@@ -279,14 +286,27 @@ function batter(x, z, player_num, handedness, home_plate_pos)
 
         -- relative to home_plate_pos.
         rel_to_home_plate_pos = vec3(rel_to_home_plate_x, 0, 0),
+
+        -- 4 or 5, indicating whether z or x was last pressed while running.
+        last_button_pressed = nil,
+
+        -- reference to set of bases.
+        bases = bases,
+
+        -- current base that the batter is on. [1,4].
+        current_base = 1,
     })
 end
 
 function get_batter_worldspace(b)
-    return worldspace(
-        b.home_plate_pos,
-        b.rel_to_home_plate_pos
-    )
+    if b.state==batter_running_unsafe or b.state==batter_running_safe then
+        return b.pos
+    else
+        return worldspace(
+            b.home_plate_pos,
+            b.rel_to_home_plate_pos
+        )
+    end
 end
 
 function get_batter_half_body_worldspace(b)
@@ -447,6 +467,27 @@ function draw_batter(b)
 
     -- determine batter screen space.
     local bx, by = world2screen(world_pos)
+
+    --
+    -- draw batter in running state.
+    --
+
+    if b.state==batter_running_unsafe or b.state==batter_running_safe then
+        -- determine points to draw z and x.
+        local zpos = bx - 5 - 5
+        local xpos = bx + 5
+        local y = by - 3
+
+        -- draw z.
+        print('❎', xpos, y, b.last_button_pressed==5 and 6 or 7)
+        print('🅾️', zpos, y, b.last_button_pressed==4 and 6 or 7)
+
+        return
+    end
+
+    --
+    -- draw batter in batting state.
+    --
 
     -- draw bat.
     if b.state==batter_batting or b.state==batter_charging then
@@ -788,6 +829,15 @@ function get_actions_for_fielder(f)
     end
 end
 
+function umpire()
+    return {
+        pos = vec3(),
+        t = 0,
+        sign_display_len = 2*60,
+        display_text = 'safe', -- 'safe' | 'out'
+    }
+end
+
 -->8
 -- game loop.
 
@@ -844,7 +894,7 @@ function init_game()
         fielder(fpos[1], nil, nil, false),
         fielder(fpos[2], nil, nil, false),
         fielder(fpos[3], nil, nil, false),
-        fielder(fpos[4], nil, nil, true),
+        -- fielder(fpos[4], nil, nil, true),
         pitcher(
             fpos[5],
             raised_pitcher_mound,
@@ -907,7 +957,7 @@ function init_game()
     }
 
     batters = {
-        batter(bases[1].x - 5, bases[1].z, 1, 'left', bases[1])
+        batter(bases[1].x, bases[1].z, 1, 'left', bases[1], bases)
     }
 end
 

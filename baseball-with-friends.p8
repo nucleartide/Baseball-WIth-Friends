@@ -328,19 +328,19 @@ function update_batter(b, ball1)
     end
 
     -- hold x to charge
-    if btnp(4, b.player_num) then
+    if b.state==batter_batting and btnp(4, b.player_num) then
         b.state = batter_charging
         return
     end
 
     -- if player is charging,
-    if btn(4, b.player_num) then
+    if b.state==batter_charging and btn(4, b.player_num) then
         -- cycle the animation timer.
         b.t = (b.t + 1)%b.charging_anim_len
     end
 
     -- release x to swing.
-    if btnr(4, b.player_num) then
+    if b.state==batter_batting and btnr(4, b.player_num) then
         b.state = batter_swinging
         b.t = 0
         swing(b, ball1)
@@ -369,6 +369,17 @@ function update_batter(b, ball1)
         end
         if btn(3, b.player_num) then
             b.bat_aim_vec.y-=.5
+        end
+    end
+
+    if b.state==batter_running_unsafe then
+    assert(false, 'continue on running update behavior')
+        if b.last_button_pressed~=4 and btnp(4, b.player_num) then
+            b.t += .01
+            b.last_button_pressed = 4
+        elseif b.last_button_pressed~=5 and btnp(5, b.player_num) then
+            b.t += .01
+            b.last_button_pressed = 5
         end
     end
 end
@@ -1004,7 +1015,9 @@ end
 function draw_game()
     cls(3)
 
+    -- todo: add a logging mechanism
     -- print('has ball:' .. tostr(fielders[5].ball~=nil))
+    print('batter running progress:'..batters[1].t)
 
     -- draw base lines
     for i=1,#bases do

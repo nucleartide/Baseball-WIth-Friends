@@ -68,9 +68,9 @@ function player_move(p)
     end
 end
 
-function player_draw(p, force_pos)
+function player_draw(p, force_pos, c)
     local sx, sy = world2screen(force_pos or p.pos)
-    rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, 8)
+    rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, c or 8)
     return sx, sy
 end
 
@@ -829,13 +829,19 @@ function get_actions_for_fielder(f)
     end
 end
 
-function umpire()
+function umpire(x, z)
     return {
-        pos = vec3(),
+        pos = vec3(x, 0, z),
         t = 0,
         sign_display_len = 2*60,
         display_text = 'safe', -- 'safe' | 'out'
+        h = 8,
+        side = 2,
     }
+end
+
+function draw_umpire(u)
+    player_draw(u, nil, 1)
 end
 
 -->8
@@ -959,6 +965,10 @@ function init_game()
     batters = {
         batter(bases[1].x, bases[1].z, 1, 'left', bases[1], bases)
     }
+
+    umpires = {
+        umpire(bases[2].x + 7, bases[2].z),
+    }
 end
 
 function update_game()
@@ -1035,6 +1045,10 @@ function draw_game()
     -- draw batters.
     for b in all(batters) do
         draw_batter(b)
+    end
+
+    for u in all(umpires) do
+        draw_umpire(u)
     end
 
     for b in all(balls) do

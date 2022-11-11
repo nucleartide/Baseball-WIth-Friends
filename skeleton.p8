@@ -4,7 +4,7 @@ __lua__
 
 #include utils.p8
 
--- todo: how do you move legs?
+assert(false, 'get arms moving')
 
 -->8
 -- game loop.

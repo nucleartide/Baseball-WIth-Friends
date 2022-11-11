@@ -48,20 +48,20 @@ function compute_skeleton(s)
     -- compute left foot.
     vec3_set(s.left_foot, s.hip)
     s.left_foot.x -= 2
-    s.left_foot.y -= 9
+    s.left_foot.y -= 5
 
     -- compute right foot.
     vec3_set(s.right_foot, s.hip)
     s.right_foot.x += 2
-    s.right_foot.y -= 9
+    s.right_foot.y -= 5
 
     -- compute left arm.
     vec3_set(s.left_arm, s.chest)
-    s.left_arm.x -= 10
+    s.left_arm.x -= 4
 
     -- compute right arm.
     vec3_set(s.right_arm, s.chest)
-    s.right_arm.x += 10
+    s.right_arm.x += 4
 end
 
 function draw_joint(v, r)
@@ -77,16 +77,22 @@ end
 
 function draw_skeleton(s)
     draw_line(s.hip, s.chest)
-    draw_limb(s.hip, s.left_foot, s.leg_len)
-    draw_limb(s.hip, s.right_foot, s.leg_len)
-    draw_limb(s.chest, s.left_arm, s.arm_len)
-    draw_limb(s.chest, s.right_arm, s.arm_len)
+    draw_limb(s.hip, s.left_foot, s.leg_len, vec3(-2, 0, -1))
+    draw_limb(s.hip, s.right_foot, s.leg_len, vec3(2, 0, -1))
+    draw_limb(s.chest, s.left_arm, s.arm_len, skeleton_bend_backward)
+    draw_limb(s.chest, s.right_arm, s.arm_len, skeleton_bend_backward)
     draw_joint(s.hip)
     draw_joint(s.chest)
     draw_joint(s.head, 2)
 end
 
-function draw_limb(v1, v2, desired_len)
+-- bend_dir should be the direction that the char is facing.
+skeleton_bend_backward = vec3(0, 0, 1)
+skeleton_bend_forward = vec3(0, 0, -1)
+function draw_limb(v1, v2, desired_len, bend_dir)
+    -- default value.
+    bend_dir = bend_dir or skeleton_bend_backward
+
     -- how long is the requested line?
     local d = distance2(v1, v2)
 
@@ -102,51 +108,24 @@ function draw_limb(v1, v2, desired_len)
         -- draw limb.
         draw_line(v1, v)
     else
-        -- ...
+        -- get the center of v1 + v2.
+        local v = vec3_set(vec3(), v1)
+        vec3_add_to(v, v2)
+        vec3_mul(v, .5)
+
+        -- compute the amount to push joint outward.
+        local bend_factor = abs(desired_len - d) * .71
+        local b = vec3_set(vec3(), bend_dir)
+        vec3_mul(b, bend_factor)
+
+        -- add to center.
+        vec3_add_to(v, b)
+
+        -- draw limb in 2 parts.
+        draw_line(v1, v)
+        draw_line(v, v2)
     end
 end
-
---[[
--- get the length of the vector from p1 to p2.
---
--- if present, alt_c is used for the 2nd line segment for
--- lines that are split into 2 segments.
-function draw_limb(v1, v2, c, water_c, desired_len, bend_dir, alt_c)
-	-- if the dist is greater than the requested length,
-	if dist>desired_len then
-		-- then the requested line is too long. clamp its length + draw.
-		local v2_clamped = v2:dupe()
-			:sub(v1)
-			:normalize()
-			:mul(desired_len)
-			:add(v1)
-		if alt_c then
-			local between = v1:dupe():add(v2_clamped):mul(.5)
-			draw_line_in_water2(v1, between, c, water_c, 'limb1')
-			draw_line_in_water2(v2_clamped, between, alt_c, alt_c, 'limb1')
-		else
-			draw_line_in_water2(v1, v2_clamped, c, water_c, 'limb1')
-		end
-
-	-- otherwise,
-	else
-		-- the requested line is too short. introduce a knee or elbow:
-
-		-- get the center of v1 + v2.
-		local joint = v1:dupe():add(v2):mul(.5)
-
-		-- push the joint outward.
-		local bend_factor = (desired_len-dist)/1.4
-		joint:add(
-			bend_dir:dupe():mul(bend_factor)
-		)
-
-		-- draw 2 separate lines.
-		draw_line_in_water2(v1, joint, c, water_c, 'limb2')
-		draw_line_in_water2(v2, joint, alt_c or c, alt_c or water_c, 'limb2')
-	end
-end
-]]
 
 -->8
 -- game loop.
@@ -156,11 +135,11 @@ function _init()
         -- hip_y = 4,
         4,
         -- leg_len = 0,
-        8,
+        6,
         -- torso_len = 0,
-        4,
+        3,
         -- arm_len = 0,
-        5,
+        6,
         -- neck_len = 0
         2
     )

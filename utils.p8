@@ -373,27 +373,28 @@ function old_world2screen(o,no_y)
 	return sx,sy
 end
 
--- no_y is used for shadows.
 function world2screen(o,no_y)	
-	-- world 2 camera
+	-- x.
 	local x = o.x
-	local y = max(o.y, 0) -- cannot be negative.
-    local z = o.z
-    z += 64 -- since our home plate is at the origin, and we are disallowing negative numbers, offset z so stuff isn't warped.
-	z = max(z, 0) -- cannot be negative.
 
+	-- y. cannot be negative.
+	local y = max(o.y, 0)
+
+	-- y. account for shadows.
 	if no_y then y=0 end
+
+	-- z. cannot be negative.
+	local z = o.z
+	z += 64 -- bump things forward so we can treat home plate as the origin.
+	z = max(z, 0)
+
+	-- perspective factors.
 	local pz = 1+z*.01
-	local ppz = 1+z*.01
 	
-	-- camera 2 screen
-	-- x smaller as z increases
-	-- z smaller as z increases
-	-- y smaller as z increases
-	-- x larger as y increases
-	sx = 64+(x/pz+y*x*.01/pz)*1.75
-	sy = 64-(z/pz+y/pz)*1.75+64 -- 1.5 to magnify, 64 to undo the previous offset
-	return sx,sy
+	-- camera 2 screen.
+	local sx = 64 + (x/pz + y*x*.01/pz)*1.75 -- the second term means: as y gets larger, x gets larger, however influenced by the sign and magnitude of x.
+	local sy = 128 - (z/pz + y/pz)*1.75
+	return sx, sy
 end
 
 function worldspace(parent_pos, pos)

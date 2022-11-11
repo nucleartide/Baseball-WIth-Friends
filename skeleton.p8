@@ -4,6 +4,8 @@ __lua__
 
 #include utils.p8
 
+-- todo: how do you move legs?
+
 -->8
 -- game loop.
 
@@ -29,6 +31,9 @@ function skeleton(
         torso_len = torso_len,
         arm_len = arm_len,
         neck_len = neck_len,
+
+        -- animation timer.
+        t = 0,
     }
 end
 
@@ -49,11 +54,13 @@ function compute_skeleton(s)
     vec3_set(s.left_foot, s.hip)
     s.left_foot.x -= 2
     s.left_foot.y -= 5
+    s.left_foot.z += 3 * sin(s.t)
 
     -- compute right foot.
     vec3_set(s.right_foot, s.hip)
     s.right_foot.x += 2
     s.right_foot.y -= 5
+    s.right_foot.z += 3 * -sin(s.t)
 
     -- compute left arm.
     vec3_set(s.left_arm, s.chest)
@@ -77,8 +84,8 @@ end
 
 function draw_skeleton(s)
     draw_line(s.hip, s.chest)
-    draw_limb(s.hip, s.left_foot, s.leg_len, vec3(-2, 0, -1))
-    draw_limb(s.hip, s.right_foot, s.leg_len, vec3(2, 0, -1))
+    draw_limb(s.hip, s.left_foot, s.leg_len, vec3(-1, 0, -1))
+    draw_limb(s.hip, s.right_foot, s.leg_len, vec3(1, 0, -1))
     draw_limb(s.chest, s.left_arm, s.arm_len, skeleton_bend_backward)
     draw_limb(s.chest, s.right_arm, s.arm_len, skeleton_bend_backward)
     draw_joint(s.hip)
@@ -158,11 +165,12 @@ function move_skeleton(s)
     if btn(3) then
         s.pos.z -= 1
     end
+    s.t += .01
 end
 
 function _update60()
-    compute_skeleton(skeleton1)
     move_skeleton(skeleton1)
+    compute_skeleton(skeleton1)
 end
 
 function _draw()

@@ -6,25 +6,6 @@ __lua__
 
 #include utils.p8
 
---[[
-
-As a batter, I want to be able to hit the ball, so that the ball is in play and I can start running toward first base.
-
-[x] init
-[x] draw
-    [x] draw the batter
-[ ] update
-    [x] hold x to charge
-    [x] release x to swing
-    [ ] implement swing function
-        [ ] set the velocity of the ball
-    [ ] nuances to swing
-        [ ] up arrow to aim up
-        [ ] left/right arrows to position in batter box
-        [ ] down arrow to aim down
-
-]]
-
 -->8
 -- static objects.
 

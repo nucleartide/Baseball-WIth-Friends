@@ -9,9 +9,9 @@ __lua__
 -->8
 -- base.
 
-function base_draw(v)
+function draw_base(v, r, c)
     local sx, sy = world2screen(v)
-    circfill(sx, sy, 4, 7)
+    circfill(sx, sy, r or 4, c or 7)
 end
 
 -->8
@@ -899,18 +899,28 @@ function draw_character(char)
 end
 
 -->8
--- game loop.
+-- game state.
 
 game_batting = 0
 game_ball_in_play = 1
 
 function init_game()
+    half_diagonal = 50 -- in world units.
 
+    bases = {
+        vec3(0, 0, -half_diagonal), -- home
+        vec3(half_diagonal, 0, 0), -- 1st
+        vec3(0, 0, half_diagonal), -- 2nd
+        vec3(-half_diagonal, 0, 0), -- 3rd
+    }
+
+    pitchers_mound = vec3()
+
+    --[[
     --
     -- config.
     --
 
-    half_diagonal = 50 -- in world units.
     gravity = -20
     offset = 5 -- used for visually offsetting pitch actions from pitcher.
 
@@ -924,14 +934,6 @@ function init_game()
     -- game objects.
     --
 
-    bases = {
-        vec3(0, 0, -half_diagonal), -- home
-        vec3(half_diagonal, 0, 0), -- 1st
-        vec3(0, 0, half_diagonal), -- 2nd
-        vec3(-half_diagonal, 0, 0), -- 3rd
-    }
-
-    pitchers_mound = vec3()
 
     -- reference points.
     raised_pitcher_mound = vec3_raise(pitchers_mound, 5)
@@ -1023,9 +1025,11 @@ function init_game()
     umpires = {
         umpire(bases[2].x + 7, bases[2].z),
     }
+    ]]
 end
 
 function update_game()
+    --[[
     btnr_update()
 
     local active_ball
@@ -1053,14 +1057,15 @@ function update_game()
     for b in all(batters) do
         update_batter(b, active_ball)
     end
+    ]]
 end
 
 function draw_game()
     cls(3)
 
-    -- todo: add a logging mechanism
-    -- print('has ball:' .. tostr(fielders[5].ball~=nil))
-    print('batter running progress:'..batters[1].t)
+    for b in all(bases) do
+        draw_base(b)
+    end
 
     -- draw base lines
     for i=1,#bases do
@@ -1069,13 +1074,18 @@ function draw_game()
         line(sx1, sy1, sx2, sy2, 7)
     end
 
-    -- draw bases
-    for b in all(bases) do
-        base_draw(b)
+    -- draw pitcher's mound
+    do
+        local sx, sy = world2screen(pitchers_mound)
+        local half_w = 8
+        local half_h = 4
+        ovalfill(sx-half_w, sy-half_h, sx+half_w, sy+half_h, 15)
     end
 
-    -- draw pitcher's mound
-    base_draw(pitchers_mound)
+    --[[
+    -- todo: add a logging mechanism
+    -- print('has ball:' .. tostr(fielders[5].ball~=nil))
+    -- print('batter running progress:'..batters[1].t)
 
     -- draw fielders.
     for f in all(fielders) do
@@ -1110,7 +1120,11 @@ function draw_game()
     for b in all(balls) do
         draw_ball(b)
     end
+    ]]
 end
+
+-->8
+-- game loop.
 
 _init = init_game
 _update60 = update_game

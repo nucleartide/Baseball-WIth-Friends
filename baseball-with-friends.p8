@@ -1,26 +1,21 @@
 pico-8 cartridge // http://www.pico-8.com
 version 38
 __lua__
--- baseball with friends
+-- pico baseball
 -- by @nucleartide
 
 #include utils.p8
 
 -->8
--- static objects.
+-- base.
 
--- bases are vectors.
 function base_draw(v)
     local sx, sy = world2screen(v)
     circfill(sx, sy, 4, 7)
 end
 
 -->8
--- dynamic objects.
-
---
--- player base class.
---
+-- player.
 
 function player(pos, player_num)
     return {
@@ -31,7 +26,7 @@ function player(pos, player_num)
     }
 end
 
-function player_move(p)
+function move_player(p)
     local player_num = p.player_num
     if player_num~=nil then
         if btn(0, player_num) then
@@ -49,18 +44,19 @@ function player_move(p)
     end
 end
 
-function player_draw(p, force_pos, c)
+function draw_player(p, force_pos, c)
 	local sx, sy = world2screen(force_pos or p.pos)
-    --rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, c or 8)
+    rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, c or 8)
+    --[[
 	spr(0,
 		sx,
 		sy, 1.5, 3, false, false)
+    ]]
 	return sx, sy
 end
 
---
--- fielder class.
---
+-->8
+-- fielder.
 
 function fielder(pos, player_num, ball, is_catcher)
     assert(actions==nil, 'this should be nil to avoid cyclic dependencies')
@@ -109,7 +105,7 @@ function update_fielder_fielding(f)
     end
 
     -- otherwise allow movement.
-    player_move(f)
+    move_player(f)
 end
 
 function update_fielder_when_selecting_action(f)
@@ -217,9 +213,16 @@ function update_fielder(f, _unused, on_select_teammate, on_throw)
     end
 end
 
---
--- batter entity.
---
+function get_actions_for_fielder(f)
+    if f.state == pitcher_selecting_pitch then
+        return pitch_actions
+    else
+        return throw_actions
+    end
+end
+
+-->8
+-- batter.
 
 -- batter states.
 batter_batting = 0
@@ -458,7 +461,7 @@ function draw_batter(b)
     local world_pos = get_batter_worldspace(b)
 
     -- draw player body.
-    player_draw(b, world_pos)
+    draw_player(b, world_pos)
 
     -- determine batter screen space.
     local bx, by = world2screen(world_pos)
@@ -514,9 +517,8 @@ function draw_batter(b)
     circ(ax, ay, 2, 6)
 end
 
---
--- fielder action class.
---
+-->8
+-- fielder action.
 
 -- x,y,z: local space position.
 -- ch: if applicable, the character that should be displayed for this action.
@@ -571,9 +573,8 @@ function fielder_action_draw_select(pa)
     circ(sx, sy, 4, 9)
 end
 
---
--- pitcher class.
---
+-->8
+-- pitcher.
 
 -- x,z: position
 -- v1,v2,v3,v4: pitch trajectory for a test pitch
@@ -611,7 +612,7 @@ end
 function pitcher_draw(p, pitch_actions)
     assert(pitch_actions~=nil)
 
-    local sx, sy = player_draw(p)
+    local sx, sy = draw_player(p)
 
     if p.state==pitcher_selecting_pitch then
         for action in all(pitch_actions) do
@@ -635,9 +636,8 @@ function pitcher_draw(p, pitch_actions)
     end
 end
 
---
--- ball class.
---
+-->8
+-- ball.
 
 ball_holding = 0
 ball_throwing = 1
@@ -791,9 +791,8 @@ function draw_ball(p)
     circfill(sx, sy, 2, 7)
 end
 
---
--- reticle class. this should be absorbed into individual player sub-classes.
---
+-->8
+-- reticle.
 
 function reticle(x, y, z)
     return vec3(x, y, z)
@@ -816,13 +815,8 @@ function reticle_update(r, player_num)
     if r.y<0 then r.y=0 end
 end
 
-function get_actions_for_fielder(f)
-    if f.state == pitcher_selecting_pitch then
-        return pitch_actions
-    else
-        return throw_actions
-    end
-end
+-->8
+-- umpire.
 
 function umpire(x, z)
     return {
@@ -836,11 +830,11 @@ function umpire(x, z)
 end
 
 function draw_umpire(u)
-    player_draw(u, nil, 1)
+    draw_player(u, nil, 1)
 end
 
 -->8
--- dynamically drawn chars.
+-- skeleton character.
 
 function character()
     return {
@@ -1031,10 +1025,6 @@ function init_game()
     }
 end
 
-function init_art_test()
-    character1 = character()
-end
-
 function update_game()
     btnr_update()
 
@@ -1065,10 +1055,6 @@ function update_game()
     end
 end
 
-function update_art_test()
-    move_character(character1)
-end
-
 function draw_game()
     cls(3)
 
@@ -1096,7 +1082,7 @@ function draw_game()
         if f.pitcher then
             pitcher_draw(f, pitch_actions)
         else
-            player_draw(f)
+            draw_player(f)
         end
 
         -- draw selection circle around pitcher action.
@@ -1125,17 +1111,6 @@ function draw_game()
         draw_ball(b)
     end
 end
-
-function draw_art_test()
-    cls()
-    draw_character(character1)
-end
-
---[[
-_init = init_art_test
-_update60 = update_art_test
-_draw = draw_art_test
-]]
 
 _init = init_game
 _update60 = update_game

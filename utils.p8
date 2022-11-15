@@ -373,9 +373,10 @@ function old_world2screen(o,no_y)
 	return sx,sy
 end
 
-function world2screen(o,no_y)	
+function world2screen(o, no_y, flip_x)	
 	-- x.
 	local x = o.x
+	if (flip_x) x *= -1
 
 	-- y. cannot be negative.
 	local y = max(o.y, 0)

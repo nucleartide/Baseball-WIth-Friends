@@ -916,6 +916,23 @@ function init_game()
 
     pitchers_mound = vec3()
 
+    -- should be flipped for lefty's batter box.
+    batters_box = {
+        vec3(-10, 0, -half_diagonal+5),
+        vec3(-4, 0, -half_diagonal+5),
+        vec3(-4, 0, -half_diagonal-2.5),
+        vec3(-10, 0, -half_diagonal-2.5),
+    }
+
+    catchers_box = {
+        vec3(-7, 0, -half_diagonal-2.5),
+        vec3(7, 0, -half_diagonal-2.5),
+        vec3(7, 0, -half_diagonal-10),
+        vec3(-7, 0, -half_diagonal-10),
+    }
+
+    x,z=0,0
+
     --[[
     --
     -- config.
@@ -1029,6 +1046,19 @@ function init_game()
 end
 
 function update_game()
+    if btn(0) then
+        x -= 1
+    end
+    if btn(1) then
+        x += 1
+    end
+    if btn(2) then
+        z += 1
+    end
+    if btn(3) then
+        z -= 1
+    end
+
     --[[
     btnr_update()
 
@@ -1060,8 +1090,28 @@ function update_game()
     ]]
 end
 
+function draw_box(box, flip, omit_top)
+    local sx1, sy1 = world2screen(box[1], nil, flip)
+    local sx2, sy2 = world2screen(box[2], nil, flip)
+    local sx3, sy3 = world2screen(box[3], nil, flip)
+    local sx4, sy4 = world2screen(box[4], nil, flip)
+    if (not omit_top) line(sx1, sy1, sx2, sy2, 7)
+    line(sx2, sy2, sx3, sy3, 7)
+    line(sx3, sy3, sx4, sy4, 7)
+    line(sx4, sy4, sx1, sy1, 7)
+end
+
 function draw_game()
     cls(3)
+
+    -- draw sand around home plate.
+    do
+        local sx, sy = world2screen(bases[1])
+        local half_w = 8*3.5
+        local half_h = 4*3.5
+        sy += 4
+        ovalfill(sx-half_w, sy-half_h, sx+half_w, sy+half_h, 15)
+    end
 
     for b in all(bases) do
         draw_base(b)
@@ -1082,11 +1132,20 @@ function draw_game()
         ovalfill(sx-half_w, sy-half_h, sx+half_w, sy+half_h, 15)
     end
 
-    --[[
-    -- todo: add a logging mechanism
-    -- print('has ball:' .. tostr(fielders[5].ball~=nil))
-    -- print('batter running progress:'..batters[1].t)
+    -- draw batter's box.
+    draw_box(batters_box)
+    draw_box(batters_box, true)
 
+    -- draw catcher's box.
+    draw_box(catchers_box, nil, true)
+
+    -- draw test entity.
+    do
+        local sx, sy = world2screen(vec3(x, 0, z))
+        circfill(sx, sy, 3, 8)
+    end
+
+    --[[
     -- draw fielders.
     for f in all(fielders) do
         if f.pitcher then

@@ -1117,6 +1117,8 @@ function draw_game()
         draw_base(b)
     end
 
+    assert(false, 'continue recreating the core batting loop')
+
     -- draw base lines
     for i=1,#bases do
         local sx1, sy1 = world2screen(bases[i])

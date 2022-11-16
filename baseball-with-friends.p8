@@ -6,6 +6,9 @@ __lua__
 
 #include utils.p8
 
+assert(false, 'todo: rethink state for creating pitcher-catcher loop.')
+assert(false, 'maybe start with a fresh cart file.')
+
 -->8
 -- base.
 
@@ -202,6 +205,18 @@ function update_pitcher_selecting_endpoint(f, on_throw)
 end
 
 function update_fielder(f, _unused, on_select_teammate, on_throw)
+    if f.player_num==nil then
+        return
+    end
+
+    -- todo: modify pitches using arrow keys.
+    -- ...
+
+    if btnp(4) then
+        throw_ball(ball1, f.pitches[1][1], catcher1.pos, catcher1)
+    end
+
+    --[[
     if f.state == fielder_fielding then
         update_fielder_fielding(f)
     elseif f.state == fielder_selecting_action then
@@ -211,6 +226,7 @@ function update_fielder(f, _unused, on_select_teammate, on_throw)
     elseif f.state == pitcher_selecting_endpoint then
         update_pitcher_selecting_endpoint(f, on_throw)
     end
+    ]]
 end
 
 function get_actions_for_fielder(f)
@@ -735,9 +751,11 @@ end
 function pick_up_ball_if_nearby(b, fielders)
     for f in all(fielders) do
         local d = distance2(f.pos, b.pos, nil, nil, nil)
-        if d<2 then
-            f.ball = b
+        -- printh(d)
+        if d<5 then
+            -- f.ball = b
             b.state = ball_holding
+            -- assert(false, 'ball has been caught, please handle')
         end
     end
 end
@@ -750,6 +768,7 @@ function animate_thrown_ball(b, fielders)
     -- local t = b.t / 200 -- testing.
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
 
+    --[[
     if b.pos.y<=0 then
         b.state = ball_idle_physical_obj
 
@@ -763,6 +782,7 @@ function animate_thrown_ball(b, fielders)
         -- set velocity
         b.vel.y = 5
     end
+    ]]
 
     -- if the ball has been thrown, then check whether any fielders are around to catch.
     if t>.2 then
@@ -952,6 +972,9 @@ function init_game()
         nil
     )
 
+    local catcher_pos = vec3_set(vec3(), bases[1])
+    catcher_pos.z -= 5
+    catcher1 = fielder(catcher_pos, nil, nil, true)
     gravity = -20
     ball1 = ball(raised_pitcher_mound, ball_holding)
 
@@ -990,7 +1013,6 @@ function init_game()
     }
 
     fielders={
-        fielder(fpos[1], nil, nil, false),
         fielder(fpos[2], nil, nil, false),
         fielder(fpos[3], nil, nil, false),
         -- fielder(fpos[4], nil, nil, true),
@@ -1066,17 +1088,9 @@ function init_game()
 end
 
 function update_game()
-    if btn(0) then
-        x -= 1
-    end
-    if btn(1) then
-        x += 1
-    end
-    if btn(2) then
-        z += 1
-    end
-    if btn(3) then
-        z -= 1
+    update_pitcher(pitcher1)
+    if ball1.state == ball_throwing then
+        animate_thrown_ball(ball1, {catcher1})
     end
 
     --[[
@@ -1193,6 +1207,7 @@ function draw_game()
         {pitcher1.pos, pitcher1, pitcher_draw},
         {ball1.pos, ball1, draw_ball},
         {shadow_pos, nil, function() draw_ball(ball1, true) end},
+        {catcher1.pos, catcher1, draw_player},
     }
     isort(sorted)
     for t in all(sorted) do

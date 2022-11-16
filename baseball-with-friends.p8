@@ -582,8 +582,7 @@ end
 -- ball: the ball, if pitcher is holding
 -- actions: list of actions that can be performed by pitcher
 function pitcher(pos, v1, v2, v3, v4, player_num, ball)
-    assert(ball.pos~=nil)
-
+    assert(ball==nil, 'fielder should not have ball field')
     return assign(fielder(pos, player_num, ball, false), {
         -- the pitcher's arsenal of pitches.
         -- just one test pitch for now.
@@ -610,10 +609,11 @@ function update_pitcher(p, fielders, something, on_throw)
 end
 
 function pitcher_draw(p, pitch_actions)
-    assert(pitch_actions~=nil)
+    -- assert(pitch_actions~=nil)
 
     local sx, sy = draw_player(p)
 
+    --[[
     if p.state==pitcher_selecting_pitch then
         for action in all(pitch_actions) do
             fielder_action_draw(action, p)
@@ -634,6 +634,7 @@ function pitcher_draw(p, pitch_actions)
         local sx, sy = world2screen(worldspace(p.dest.pos, p.reticle))
         circ(sx, sy, 2, c)
     end
+    ]]
 end
 
 -->8
@@ -784,10 +785,12 @@ function hold_ball(b, fielders)
     end
 end
 
-function draw_ball(p)
+function draw_ball(p, draw_shadow)
     local sx, sy = world2screen(p.pos)
-    local shadow_x, shadow_y = world2screen(p.pos, true)
-    circfill(shadow_x, shadow_y, 2, 5)
+    if draw_shadow then
+        local shadow_x, shadow_y = world2screen(p.pos, true)
+        circfill(shadow_x, shadow_y, 2, 5)
+    end
     circfill(sx, sy, 2, 7)
 end
 
@@ -933,12 +936,30 @@ function init_game()
 
     x,z=0,0
 
+    raised_pitcher_mound = vec3_set(vec3(), pitchers_mound)
+    raised_pitcher_mound.y += 5
+
+    raised_home_plate = vec3_set(vec3(), bases[1])
+    raised_home_plate.y += 5
+
+    pitcher1 = pitcher(
+        vec3(),
+        raised_pitcher_mound,
+        vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .33),
+        vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .67),
+        raised_home_plate,
+        0,
+        nil
+    )
+
+    gravity = -20
+    ball1 = ball(raised_pitcher_mound, ball_holding)
+
     --[[
     --
     -- config.
     --
 
-    gravity = -20
     offset = 5 -- used for visually offsetting pitch actions from pitcher.
 
     --
@@ -957,7 +978,6 @@ function init_game()
     raised_home_plate = vec3_raise(bases[1], 5)
 
     balls = {
-        ball(raised_pitcher_mound, ball_holding),
     }
 
     -- fielder positions.
@@ -1101,6 +1121,24 @@ function draw_box(box, flip, omit_top)
     line(sx4, sy4, sx1, sy1, 7)
 end
 
+function comparator(v1, v2)
+    if v1[1].z==v2[1].z then
+        return v1[1].y < v2[1].y
+    else
+        return v1[1].z > v2[1].z
+    end
+end
+
+function isort(t) --insertion sort, ascending y
+    for n=2,#t do
+        local i=n
+        while i>1 and comparator(t[i], t[i-1]) do
+            t[i],t[i-1]=t[i-1],t[i]
+            i-=1
+        end
+    end
+end
+
 function draw_game()
     cls(3)
 
@@ -1117,7 +1155,7 @@ function draw_game()
         draw_base(b)
     end
 
-    assert(false, 'continue recreating the core batting loop')
+    -- assert(false, 'continue recreating the core batting loop')
 
     -- draw base lines
     for i=1,#bases do
@@ -1144,8 +1182,27 @@ function draw_game()
     -- draw test entity.
     do
         local sx, sy = world2screen(vec3(x, 0, z))
-        circfill(sx, sy, 3, 8)
+        -- circfill(sx, sy, 3, 8)
     end
+
+    -- sort these by position.
+    local shadow_pos = vec3_set(vec3(), ball1.pos)
+    shadow_pos.y = -1
+    local sorted = {
+        -- {obj, draw_fn},
+        {pitcher1.pos, pitcher1, pitcher_draw},
+        {ball1.pos, ball1, draw_ball},
+        {shadow_pos, nil, function() draw_ball(ball1, true) end},
+    }
+    isort(sorted)
+    for t in all(sorted) do
+        local entity_data = t[2]
+        local draw_fn = t[3]
+        draw_fn(entity_data)
+    end
+
+    -- todo:
+    -- sort the ball, pitcher, and ball shadow.
 
     --[[
     -- draw fielders.

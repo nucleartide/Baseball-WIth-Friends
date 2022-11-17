@@ -6,15 +6,31 @@ __lua__
 
 #include utils.p8
 
-assert(false, 'todo: rethink state for creating pitcher-catcher loop.')
-assert(false, 'maybe start with a fresh cart file.')
+--[[
+
+todo:
+
+- vec functions should just create new vectors
+
+]]
 
 -->8
--- base.
+-- static objects.
 
 function draw_base(v, r, c)
     local sx, sy = world2screen(v)
     circfill(sx, sy, r or 4, c or 7)
+end
+
+function draw_box(box, flip, omit_top)
+    local sx1, sy1 = world2screen(box[1], nil, flip)
+    local sx2, sy2 = world2screen(box[2], nil, flip)
+    local sx3, sy3 = world2screen(box[3], nil, flip)
+    local sx4, sy4 = world2screen(box[4], nil, flip)
+    if (not omit_top) line(sx1, sy1, sx2, sy2, 7)
+    line(sx2, sy2, sx3, sy3, 7)
+    line(sx3, sy3, sx4, sy4, 7)
+    line(sx4, sy4, sx1, sy1, 7)
 end
 
 -->8
@@ -50,50 +66,23 @@ end
 function draw_player(p, force_pos, c)
 	local sx, sy = world2screen(force_pos or p.pos)
     rectfill(sx-p.side, sy-p.h+1, sx+p.side, sy, c or 8)
-    --[[
-	spr(0,
-		sx,
-		sy, 1.5, 3, false, false)
-    ]]
 	return sx, sy
 end
 
 -->8
 -- fielder.
 
-function fielder(pos, player_num, ball, is_catcher)
-    assert(actions==nil, 'this should be nil to avoid cyclic dependencies')
-    assert(is_catcher~=nil)
-
+function fielder(pos, player_num, _ball, _is_catcher)
     fielder_fielding = 0
     fielder_selecting_action = 1
     pitcher_selecting_pitch = 2
     pitcher_selecting_endpoint = 3
 
     return assign(player(pos, player_num), {
-        -- reference to ball, if fielder is holding one.
-        -- todo: it may be useful to move tthis to an "Owned_by" field
-        -- on the ball, so that we don't need to update the state of multiple fielders.
-        -- not too important though.
-        ball = ball,
-
-        -- currently selected action.
-        selected_action_index = -1,
-
-        -- check whether this object is a fielder.
-        fielder = true,
-
-        -- the fielder's current state.
-        state = fielder_fielding,
-
-        -- whether this fielder is a catcher, in which case in the pitching phase:
-        -- 1. this catcher can't move, and
-        -- 2. when a pitcher throws to this catcher, the pitching_action ui is shown.
-        catcher = is_catcher,
+        -- ...
     })
 end
 
--- todo: clean up.
 function update_fielder_fielding(f)
     -- if z is pressed,
     -- player_num is not nil (so it's a human player),
@@ -151,7 +140,6 @@ function update_fielder_when_selecting_action(f)
     end
 end
 
--- todo: clean up.
 function update_pitcher_selecting_pitch(f, pitch_actions)
     assert(pitch_actions~=nil)
 
@@ -215,18 +203,6 @@ function update_fielder(f, _unused, on_select_teammate, on_throw)
     if btnp(4) then
         throw_ball(ball1, f.pitches[1][1], catcher1.pos, catcher1)
     end
-
-    --[[
-    if f.state == fielder_fielding then
-        update_fielder_fielding(f)
-    elseif f.state == fielder_selecting_action then
-        update_fielder_when_selecting_action(f)
-    elseif f.state == pitcher_selecting_pitch then
-        update_pitcher_selecting_pitch(f, pitch_actions)
-    elseif f.state == pitcher_selecting_endpoint then
-        update_pitcher_selecting_endpoint(f, on_throw)
-    end
-    ]]
 end
 
 function get_actions_for_fielder(f)
@@ -376,7 +352,6 @@ function update_batter(b, ball1)
     end
 
     if b.state==batter_running_unsafe then
-    --assert(false, 'continue on running update behavior')
         if b.last_button_pressed~=4 and btnp(4, b.player_num) then
             b.t += .01
             b.last_button_pressed = 4
@@ -427,48 +402,6 @@ function swing(batter, ball1)
             ball1.vel.z = 30 - 50 * z_diff/10
             ball1.state = ball_idle_physical_obj
         end
-    end
-end
-
-function __batter_update(b, on_hit)
-    assert(on_hit~=nil)
-
-    if b.state==0 and btn(4, 1) then
-        b.state=1
-    end
-
-    if b.state==1 and btnr(4, 1) then
-        -- todo: flesh this out.
-        b.state=2
-        b.batted_state_timer = b.batted_state_t_interval
-    end
-
-    if b.state==2 then
-        batter_check_for_hit(b, batter_reticle, bases[1], ball1.pos, ball1.vel, on_hit)
-        b.batted_state_timer -= 1
-        if (b.batted_state_timer<0) then
-            b.batted_state_timer=0
-            b.state=1
-        end
-    end
-end
-
-function __batter_check_for_hit(b, batter_reticle, home_plate_vec, ball_pos, ball_vel, on_hit)
-    -- take reticle position and distance to home plate.
-    assert(batter_reticle.x~=nil)
-    assert(home_plate_vec.x~=nil)
-    assert(ball_pos.x~=nil)
-
-    -- ball is close enough if...
-    -- - distance to home plate is less than .5 (can tweak later)
-    -- - distance to batter reticle is less than .5 (can tweak later)
-    local dist_to_home_plate = distance2(home_plate_vec, ball_pos, true, true, nil)
-    local dist_from_reticle = distance2(batter_reticle, ball_pos, nil, nil, true)
-    local is_close_enough = dist_to_home_plate <= 5 and dist_from_reticle <= 5
-
-    if is_close_enough then
-        -- then update the velocity on the ball when hit
-        on_hit(0, 20, 30)
     end
 end
 
@@ -597,26 +530,13 @@ end
 -- player_num: input controller index
 -- ball: the ball, if pitcher is holding
 -- actions: list of actions that can be performed by pitcher
-function pitcher(pos, v1, v2, v3, v4, player_num, ball)
-    assert(ball==nil, 'fielder should not have ball field')
-    return assign(fielder(pos, player_num, ball, false), {
+function pitcher(pos, v1, v2, v3, v4, player_num)
+    return assign(fielder(pos, player_num), {
         -- the pitcher's arsenal of pitches.
         -- just one test pitch for now.
         pitches = {
             cubic_bezier(v1, v2, v3, v4),
         },
-
-        -- identifier to distinguish this pitcher.
-        pitcher = true,
-
-        -- pitch endpoint relative to destination player.
-        pitch_endpoint = vec3(),
-
-        -- reticle relative to pitcher's position.
-        reticle = vec3(),
-
-        -- destination fielder, if throwing to a fielder.
-        dest = nil,
     })
 end
 
@@ -624,18 +544,10 @@ function update_pitcher(p, fielders, something, on_throw)
     update_fielder(p, fielders, nil, on_throw)
 end
 
-function pitcher_draw(p, pitch_actions)
-    -- assert(pitch_actions~=nil)
-
+function pitcher_draw(p)
     local sx, sy = draw_player(p)
 
-    --[[
-    if p.state==pitcher_selecting_pitch then
-        for action in all(pitch_actions) do
-            fielder_action_draw(action, p)
-        end
-    end
-
+    --[[ -- may need this.
     if p.state==pitcher_selecting_endpoint then
         -- draw strike box.
         do
@@ -857,75 +769,7 @@ function draw_umpire(u)
 end
 
 -->8
--- skeleton character.
-
-function character()
-    return {
-        pos = vec3(),
-    }
-end
-
-function move_character(char)
-    if btn(0) then
-        char.pos.x -= 1
-    end
-    if btn(1) then
-        char.pos.x += 1
-    end
-    if btn(2) then
-        char.pos.z += 1
-    end
-    if btn(3) then
-        char.pos.z -= 1
-    end
-end
-
-function draw_character(char)
-    local sx, sy = world2screen(char.pos)
-    for i=0,2 do
-        circfill(sx, sy-i, 3, 7)
-    end
-
-    -- draw feet
-    local left_leg_x, left_leg_y = sx-2, sy+4
-    local right_leg_x, right_leg_y = sx+2, sy+4
-
-    -- draw legs.
-    for i=0,4 do
-        circfill(left_leg_x, left_leg_y+i, 1, 8)
-    end
-    for i=0,4 do
-        circfill(right_leg_x, right_leg_y+i, 1, 9)
-    end
-
-    local left_arm_x, left_arm_y = sx-4, sy-2
-    for i=0,4 do
-        circfill(left_arm_x, left_arm_y+i, 1, 6)
-    end
-
-    local right_arm_x, right_arm_y = sx+4, sy-2
-    for i=0,4 do
-        circfill(right_arm_x, right_arm_y+i, 1, 6)
-    end
-
-    circfill(left_arm_x, left_arm_y+4, 1, 9)
-    circfill(right_arm_x, right_arm_y+4, 1, 9)
-
-
-    -- draw feet
-    rectfill(left_leg_x, left_leg_y+5, left_leg_x+1, left_leg_y+6, 10)
-    rectfill(right_leg_x, right_leg_y+5, right_leg_x+1, right_leg_y+6, 10)
-
-    -- draw head.
-    circfill(sx, sy-8, 4, 2)
-    circfill(sx, sy-7, 3, 12)
-end
-
--->8
 -- game state.
-
-game_batting = 0
-game_ball_in_play = 1
 
 function init_game()
     half_diagonal = 50 -- in world units.
@@ -954,8 +798,6 @@ function init_game()
         vec3(-7, 0, -half_diagonal-10),
     }
 
-    x,z=0,0
-
     raised_pitcher_mound = vec3_set(vec3(), pitchers_mound)
     raised_pitcher_mound.y += 5
 
@@ -968,188 +810,27 @@ function init_game()
         vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .33),
         vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .67),
         raised_home_plate,
-        0,
-        nil
+        0
     )
 
-    local catcher_pos = vec3_set(vec3(), bases[1])
-    catcher_pos.z -= 5
-    catcher1 = fielder(catcher_pos, nil, nil, true)
-    gravity = -20
-    ball1 = ball(raised_pitcher_mound, ball_holding)
-
-    --[[
-    --
-    -- config.
-    --
-
-    offset = 5 -- used for visually offsetting pitch actions from pitcher.
-
-    --
-    -- game state.
-    --
-
-    game_state = game_batting
-
-    --
-    -- game objects.
-    --
-
-
-    -- reference points.
-    raised_pitcher_mound = vec3_raise(pitchers_mound, 5)
-    raised_home_plate = vec3_raise(bases[1], 5)
-
-    balls = {
-    }
-
-    -- fielder positions.
-    fpos = {
-        vec3(half_diagonal, 0, 0),
-        vec3(0, 0, half_diagonal),
-        vec3(-half_diagonal, 0, 0),
-        vec3(0, 0, -half_diagonal - 5),
-        vec3(),
-    }
-
-    fielders={
-        fielder(fpos[2], nil, nil, false),
-        fielder(fpos[3], nil, nil, false),
-        -- fielder(fpos[4], nil, nil, true),
-        pitcher(
-            fpos[5],
-            raised_pitcher_mound,
-            vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .33),
-            vec3_lerp_into(raised_pitcher_mound, raised_home_plate, vec3(), .67),
-            raised_home_plate,
-            0,
-            balls[1]
-        ),
-    }
-
-    -- set of actions that can be performed by a fielder.
-    throw_actions={}
-    for f in all(fielders) do
-        local fa = fielder_action(
-            0,0,0,
-            '',
-            f.pos,
-            function(throwing_fielder, action)
-                local src = throwing_fielder
-                local dest = f
-
-                assert(src~=nil)
-                assert(action~=nil)
-
-                if src.pitcher and dest.catcher then
-                    -- then change into pitching state.
-                    src.state = pitcher_selecting_pitch 
-                    src.dest = dest
-                else
-                    -- throw the ball.
-                    throw_ball(throwing_fielder.ball, throwing_fielder.pos, worldspace(action.parent_pos, action.pos), f)
-
-                    -- fielder no longer owns ball.
-                    src.ball = nil
-                end
-            end
-        )
-        add(throw_actions, fa)
+    do
+        local catcher_pos = vec3_set(vec3(), bases[1])
+        catcher_pos.z -= 5
+        catcher1 = fielder(catcher_pos, nil)
     end
 
-    -- set of actions that can be performed by the pitcher.
-    local ppos = fpos[5]
-    pitch_actions = {
-        fielder_action(0,offset,offset,'⬆️',ppos,function(throwing_fielder, action, dest_fielder)
-            assert(false, 'get rid of this')
-            assert(throwing_fielder~=nil)
-            assert(action~=nil)
-            assert(dest_fielder~=nil)
+    gravity = -20
 
-            local src = throwing_fielder
-            local dest = dest_fielder
-
-            -- then transition states.
-            -- src.state = 
-        end),
-        fielder_action(0,offset,-offset,'⬇️',ppos,function() assert(false) end),
-        fielder_action(-offset,offset,0,'⬅️',ppos,function() assert(false) end),
-        fielder_action(offset,offset,0,'➡️',ppos,function() assert(false) end),
-    }
-
-    batters = {
-        batter(bases[1].x, bases[1].z, 1, 'left', bases[1], bases)
-    }
-
-    umpires = {
-        umpire(bases[2].x + 7, bases[2].z),
-    }
-    ]]
+    ball1 = ball(raised_pitcher_mound, ball_holding)
 end
 
 function update_game()
+    assert(false, 'todo: revisit the logic here.')
+
     update_pitcher(pitcher1)
+
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1, {catcher1})
-    end
-
-    --[[
-    btnr_update()
-
-    local active_ball
-    for b in all(balls) do
-        if b.state==ball_throwing then
-            active_ball = b
-            animate_thrown_ball(b, fielders)
-        elseif b.state==ball_holding then
-            hold_ball(b, fielders)
-        elseif b.state==ball_idle_physical_obj then
-            simulate_as_rigidbody(b, fielders)
-        else
-            assert(false)
-        end
-    end
-
-    for f in all(fielders) do
-        if f.pitcher then
-            update_pitcher(f, throw_actions, nil, on_throw)
-        else
-            update_fielder(f, throw_actions, nil, on_throw)
-        end
-    end
-
-    for b in all(batters) do
-        update_batter(b, active_ball)
-    end
-    ]]
-end
-
-function draw_box(box, flip, omit_top)
-    local sx1, sy1 = world2screen(box[1], nil, flip)
-    local sx2, sy2 = world2screen(box[2], nil, flip)
-    local sx3, sy3 = world2screen(box[3], nil, flip)
-    local sx4, sy4 = world2screen(box[4], nil, flip)
-    if (not omit_top) line(sx1, sy1, sx2, sy2, 7)
-    line(sx2, sy2, sx3, sy3, 7)
-    line(sx3, sy3, sx4, sy4, 7)
-    line(sx4, sy4, sx1, sy1, 7)
-end
-
-function comparator(v1, v2)
-    if v1[1].z==v2[1].z then
-        return v1[1].y < v2[1].y
-    else
-        return v1[1].z > v2[1].z
-    end
-end
-
-function isort(t) --insertion sort, ascending y
-    for n=2,#t do
-        local i=n
-        while i>1 and comparator(t[i], t[i-1]) do
-            t[i],t[i-1]=t[i-1],t[i]
-            i-=1
-        end
     end
 end
 
@@ -1165,20 +846,19 @@ function draw_game()
         ovalfill(sx-half_w, sy-half_h, sx+half_w, sy+half_h, 15)
     end
 
+    -- draw bases.
     for b in all(bases) do
         draw_base(b)
     end
 
-    -- assert(false, 'continue recreating the core batting loop')
-
-    -- draw base lines
+    -- draw base lines.
     for i=1,#bases do
         local sx1, sy1 = world2screen(bases[i])
         local sx2, sy2 = world2screen(bases[luamod(i+1, 4)])
         line(sx1, sy1, sx2, sy2, 7)
     end
 
-    -- draw pitcher's mound
+    -- draw pitcher's mound.
     do
         local sx, sy = world2screen(pitchers_mound)
         local half_w = 8
@@ -1186,74 +866,32 @@ function draw_game()
         ovalfill(sx-half_w, sy-half_h, sx+half_w, sy+half_h, 15)
     end
 
-    -- draw batter's box.
+    -- draw batter's boxes.
     draw_box(batters_box)
     draw_box(batters_box, true)
 
     -- draw catcher's box.
     draw_box(catchers_box, nil, true)
 
-    -- draw test entity.
-    do
-        local sx, sy = world2screen(vec3(x, 0, z))
-        -- circfill(sx, sy, 3, 8)
-    end
-
-    -- sort these by position.
+    -- compute ball shadow position.
     local shadow_pos = vec3_set(vec3(), ball1.pos)
     shadow_pos.y = -1
-    local sorted = {
+
+    -- sort entities by position.
+    local sorted = isort({
         -- {obj, draw_fn},
         {pitcher1.pos, pitcher1, pitcher_draw},
         {ball1.pos, ball1, draw_ball},
         {shadow_pos, nil, function() draw_ball(ball1, true) end},
         {catcher1.pos, catcher1, draw_player},
-    }
-    isort(sorted)
+    })
+
+    -- draw sorted entities.
     for t in all(sorted) do
         local entity_data = t[2]
         local draw_fn = t[3]
         draw_fn(entity_data)
     end
-
-    -- todo:
-    -- sort the ball, pitcher, and ball shadow.
-
-    --[[
-    -- draw fielders.
-    for f in all(fielders) do
-        if f.pitcher then
-            pitcher_draw(f, pitch_actions)
-        else
-            draw_player(f)
-        end
-
-        -- draw selection circle around pitcher action.
-        if f.state==fielder_selecting_action or f.state==pitcher_selecting_pitch then
-            local actions = get_actions_for_fielder(f)
-            for i=1,#actions do
-                local a = actions[i]
-                local selected = i==f.selected_action_index
-                if selected then
-                    fielder_action_draw_select(a)
-                end
-            end
-        end
-    end
-
-    -- draw batters.
-    for b in all(batters) do
-        draw_batter(b)
-    end
-
-    for u in all(umpires) do
-        draw_umpire(u)
-    end
-
-    for b in all(balls) do
-        draw_ball(b)
-    end
-    ]]
 end
 
 -->8

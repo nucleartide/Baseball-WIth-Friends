@@ -461,3 +461,22 @@ function concat(list1, list2)
 	for obj in all(list2) do add(list3, obj) end
 	return list3
 end
+
+function comparator(v1, v2)
+    if v1[1].z==v2[1].z then
+        return v1[1].y < v2[1].y
+    else
+        return v1[1].z > v2[1].z
+    end
+end
+
+function isort(t) --insertion sort, ascending y
+    for n=2,#t do
+        local i=n
+        while i>1 and comparator(t[i], t[i-1]) do
+            t[i],t[i-1]=t[i-1],t[i]
+            i-=1
+        end
+    end
+    return t
+end

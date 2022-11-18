@@ -582,7 +582,7 @@ function ball(pos, initial_state)
 
         -- the fielder that is holding the ball.
         -- will be used soon.
-        -- is_owned_by = nil,
+        is_owned_by = nil,
 
         -- throw animation.
         t = 0, -- timer field used for animation.
@@ -628,12 +628,39 @@ function throw_ball(b, trajectory)
     b.state = ball_throwing
 end
 
+function return_ball_to_pitcher(b, fielder, pitcher)
+    local start = get_fielder_midpoint(fielder)
+    local _end = get_fielder_midpoint(pitcher)
+
+    -- set trajectory.
+    b.trajectory = cubic_bezier(
+        start,
+        vec3_lerp_into(start, _end, vec3(), .33),
+        vec3_lerp_into(start, _end, vec3(), .67),
+        _end
+    )
+
+    -- set animation.
+    b.t = 0
+    b.throw_duration = (distance2(start, _end) / 50) * 60
+
+    -- set state.
+    b.state = ball_throwing
+end
+
 function pick_up_ball_if_nearby(b, fielders)
     assert(#fielders>0)
     for f in all(fielders) do
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
         if d<5 then
             b.state = ball_holding
+
+            if f~=pitcher1 then
+                -- after 1s, catcher throws the ball back.
+                delay(function()
+                    return_ball_to_pitcher(b, f, pitcher1)
+                end, 60)
+            end
         end
     end
 end
@@ -656,10 +683,11 @@ function animate_thrown_ball(b)
     end
     ]]
 
-
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
+
+    vec3_print(b.pos, true)
 
     -- if the ball has been thrown, then
     if t>.2 then
@@ -790,7 +818,7 @@ function init_game()
 
     ball1 = ball(raised_pitcher_mound, ball_holding)
 
-    fielders = {catcher1}
+    fielders = {catcher1, pitcher1}
 end
 
 function update_game()
@@ -801,10 +829,16 @@ function update_game()
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1)
     end
+
+    -- bookkeeping.
+    count_down_timers()
 end
 
 function draw_game()
     cls(3)
+
+    print(ball1.state)
+    print(stat(1))
 
     -- draw sand around home plate.
     do

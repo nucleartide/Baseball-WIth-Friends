@@ -480,3 +480,21 @@ function isort(t) --insertion sort, ascending y
     end
     return t
 end
+
+do
+	local functions = {}
+
+	function delay(reified_function, t)
+		add(functions, {reified_function, t})
+	end
+
+	function count_down_timers()
+		for f in all(functions) do
+			f[2] -= 1
+			if f[2]<=0 then
+				f[1]()
+				del(functions, f)
+			end
+		end
+	end
+end

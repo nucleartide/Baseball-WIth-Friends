@@ -83,6 +83,10 @@ function fielder(pos, player_num, _ball, _is_catcher)
     })
 end
 
+function get_fielder_midpoint(f)
+    return vec3(f.pos.x, f.h*.5, f.pos.z)
+end
+
 function update_fielder_fielding(f)
     -- if z is pressed,
     -- player_num is not nil (so it's a human player),
@@ -192,16 +196,13 @@ function update_pitcher_selecting_endpoint(f, on_throw)
     end
 end
 
-function update_fielder(f, _unused, on_select_teammate, on_throw)
+function update_fielder(f)
     if f.player_num==nil then
         return
     end
 
-    -- todo: modify pitches using arrow keys.
-    -- ...
-
-    if btnp(4) then
-        throw_ball(ball1, f.pitches[1][1], catcher1.pos, catcher1)
+    if btnp(4, f.player_num) then
+        throw_ball(ball1, f.pitches[1])
     end
 end
 
@@ -540,8 +541,8 @@ function pitcher(pos, v1, v2, v3, v4, player_num)
     })
 end
 
-function update_pitcher(p, fielders, something, on_throw)
-    update_fielder(p, fielders, nil, on_throw)
+function update_pitcher(p)
+    update_fielder(p)
 end
 
 function pitcher_draw(p)
@@ -573,28 +574,25 @@ ball_throwing = 1
 ball_idle_physical_obj = 2
 
 function ball(pos, initial_state)
-    assert(pos~=nil)
-    assert(gravity~=nil)
-    assert(initial_state~=nil)
-
     return {
         -- physical properties.
         pos = vec3_set(vec3(), pos),
         vel = vec3(),
-        acc = vec3_mul(vec3(0, gravity, 0), 1/60), -- force of gravity
+        acc = vec3_mul(vec3(0, gravity, 0), 1/60),
 
-        -- when thrown.
-        trajectory = nil, -- of type cubic_bezier.
+        -- the fielder that is holding the ball.
+        -- will be used soon.
+        -- is_owned_by = nil,
 
         -- throw animation.
         t = 0, -- timer field used for animation.
-        throw_duration = 2*60, -- this is dynamically set elsewhere.
-
-        -- if a catcher doesn't catch the ball at the end,
-        -- sample from the bezier curve past t=1.
+        throw_duration = -1, -- this is dynamically set elsewhere.
 
         -- state of the ball.
         state = initial_state,
+
+        -- populated when thrown. of type cubic_bezier.
+        trajectory = nil,
     }
 end
 
@@ -618,68 +616,30 @@ function simulate_as_rigidbody(b, fielders)
     pick_up_ball_if_nearby(b, fielders)
 end
 
--- throw ball by updating the state of passed-in ball b.
---
--- b: ball table.
--- starting_vec: the starting point of the throw.
--- ending_vec: the ending point of the throw.
--- dest_player: the player that is being thrown to.
-function throw_ball(b, starting_vec, ending_vec, dest_player)
-    assert(b~=nil)
-    assert(dest_player.pos~=nil)
+function throw_ball(b, trajectory)
+    -- set trajectory.
+    b.trajectory = trajectory
 
-    -- create 4 points.
-    local start = vec3_set(vec3(), starting_vec)
-    local endpoint = vec3_set(vec3(), ending_vec)
-    local middle1 = vec3_lerp_into(start, endpoint, vec3(), .33)
-    local middle2 = vec3_lerp_into(start, endpoint, vec3(), .67)
-
-    -- tweak 4 points so ball follows an arc.
-    start.y += 5
-    middle1.y += 15
-    middle2.y += 15
-    endpoint.y += 5
-
-    --
-    -- set fields on the ball object.
-    --
-
-    -- set trajectory on ball.
-    b.trajectory = cubic_bezier(start, middle1, middle2, endpoint)
-
-    -- reset animation fields.
+    -- set animation.
     b.t = 0
-    local d = distance2(start, endpoint)
-    -- b.throw_duration = d / 200 * 60
-    b.throw_duration = 3 * 60
+    b.throw_duration = (distance2(trajectory[1], trajectory[4]) / 200) * 60
 
-    -- set the ball's state, we'll need it to know whether we are animating.
+    -- set state.
     b.state = ball_throwing
-
-    -- set the destination player.
-    b.dest_player = dest_player
 end
 
 function pick_up_ball_if_nearby(b, fielders)
+    assert(#fielders>0)
     for f in all(fielders) do
-        local d = distance2(f.pos, b.pos, nil, nil, nil)
-        -- printh(d)
+        local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
         if d<5 then
-            -- f.ball = b
             b.state = ball_holding
-            -- assert(false, 'ball has been caught, please handle')
         end
     end
 end
 
-function animate_thrown_ball(b, fielders)
-    assert(fielders~=nil)
-
-    -- update the ball's position.
-    local t = b.t / b.throw_duration
-    -- local t = b.t / 200 -- testing.
-    cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
-
+function animate_thrown_ball(b)
+    -- handle dropped balls.
     --[[
     if b.pos.y<=0 then
         b.state = ball_idle_physical_obj
@@ -696,8 +656,15 @@ function animate_thrown_ball(b, fielders)
     end
     ]]
 
-    -- if the ball has been thrown, then check whether any fielders are around to catch.
+
+    -- update the ball's position.
+    local t = b.t / b.throw_duration
+    cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
+
+    -- if the ball has been thrown, then
     if t>.2 then
+        -- check whether any fielders are around to catch.
+        assert(fielders~=nil)
         pick_up_ball_if_nearby(b, fielders)
     end
 
@@ -822,15 +789,17 @@ function init_game()
     gravity = -20
 
     ball1 = ball(raised_pitcher_mound, ball_holding)
+
+    fielders = {catcher1}
 end
 
 function update_game()
-    assert(false, 'todo: revisit the logic here.')
+    -- assert(false, 'todo: revisit the logic here.')
 
-    update_pitcher(pitcher1)
+    update_fielder(pitcher1)
 
     if ball1.state == ball_throwing then
-        animate_thrown_ball(ball1, {catcher1})
+        animate_thrown_ball(ball1)
     end
 end
 

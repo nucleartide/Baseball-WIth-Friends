@@ -116,9 +116,12 @@ function rotate_angle_axis(v, angle, axis)
 	local ca = cos(angle)
 	local sa = sin(angle)
 	local t = 1 - ca
-	local x = v.x
-	local y = v.y
-	local z = v.z
+	-- print(ca)
+	-- print(sa)
+	-- print(t)
+	local x = axis.x
+	local y = axis.y
+	local z = axis.z
 
 	-- copied from rosetta code javascript implementation.
 	-- recopy if something seems off, since i have no idea how this works lol.
@@ -128,6 +131,9 @@ function rotate_angle_axis(v, angle, axis)
         vec3(z*x*t - y*sa, z*y*t + x*sa, ca + z*z*t),
 	}
 
+	-- vec3_print(rotation_matrix[1])
+	-- vec3_print(rotation_matrix[2])
+	-- vec3_print(rotation_matrix[3])
 	return matrix_multiply(rotation_matrix, v)
 end
 
@@ -135,7 +141,7 @@ do
 	cls()
 	local v1 = vec3(1, 0, 0)
 	local axis = vec3(0, 1, 0)
-	local angle = -.75
+	local angle = .75 -- goes counterclockwise if you face down from the top of the axis
 	local result = rotate_angle_axis(v1, angle, axis)
 	vec3_print(v1)
 	vec3_print(result)

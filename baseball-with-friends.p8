@@ -217,78 +217,66 @@ end
 -->8
 -- batter.
 
--- batter states.
 batter_batting = 0
 batter_charging = 1
 batter_swinging = 2
 batter_running_unsafe = 3
 batter_running_safe = 4
--- no running as of now.
 
--- batter can bat and run.
-function batter(x, z, player_num, handedness, home_plate_pos, bases)
-    assert(home_plate_pos~=nil)
-    assert(bases~=nil)
+function batter(x, z, player_num, handedness)
+    -- handedness = handedness or 'right'
+    -- local bat_aim_x = handedness=='right' and 5 or -5
 
-    -- [x] player's position.
-    -- [x] handedness.
-    -- [x] home plate position.
-    -- [x] rel_to_home_plate_pos.
-    -- [x] get_batter_worldspace()
-    -- [x] get_batter_half_body_worldspace()
-    -- [ ] bat aim vector (relative to get_batter_half_body_worldspace)
-
+    -- determine the rel_to_home_plate_pos.
     handedness = handedness or 'right'
-    local rel_to_home_plate_x = handedness=='right' and -5 or 5
-    local bat_aim_x = handedness=='right' and 5 or -5
+    local rel_to_home_plate_x = handedness=='right' and -7 or 7
 
-    return assign(player(vec3(x,0,z), player_num), {
+    -- computed props:
+    -- get_batter_worldspace(batter, home_plate_pos)
+
+    return assign(player(vec3(x, 0, z), player_num), {
         -- state of player.
-        -- state = batter_batting,
-        state = batter_running_unsafe,
-
-        -- animation timer.
-        -- in the case of running, this ranges from [0,1]
-        t = 0,
-
-        -- animation lengths (in frames).
-        charging_anim_len = 10,
-        swing_anim_len = .5*60,
+        state = batter_batting,
 
         -- 'left' | 'right'
-        handedness = handedness or 'right',
-
-        -- relative to get_batter_Half_body_worldspace.
-        bat_aim_vec = vec3(bat_aim_x, 0, 0),
-
-        -- home plate pos reference.
-        home_plate_pos = home_plate_pos,
+        -- determines the batter box side.
+        handedness = handedness,
 
         -- relative to home_plate_pos.
         rel_to_home_plate_pos = vec3(rel_to_home_plate_x, 0, 0),
 
-        -- 4 or 5, indicating whether z or x was last pressed while running.
-        last_button_pressed = nil,
+        --
+        -- bat animation fields.
+        --
 
-        -- reference to set of bases.
-        bases = bases,
+        -- animation timer.
+        -- in the case of running, this ranges from [0,1].
+        -- t = 0,
+
+        -- animation lengths (in frames).
+        -- charging_anim_len = 10, -- cycle every 10 frames.
+        -- swing_anim_len = .5*60, -- half a second.
+
+        -- relative to get_batter_half_body_worldspace.
+        -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
+
+        --
+        -- run fields.
+        --
+
+        -- 4 or 5, indicating whether z or x was last pressed while running.
+        -- last_button_pressed = nil,
 
         -- current base that the batter is on. [1,4].
-        current_base = 1,
+        -- current_base = 1,
     })
 end
 
-function get_batter_worldspace(b)
-    if b.state==batter_running_unsafe or b.state==batter_running_safe then
-        return b.pos
-    else
-        return worldspace(
-            b.home_plate_pos,
-            b.rel_to_home_plate_pos
-        )
-    end
+function get_batter_worldspace(b, home_plate_pos)
+    return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
+--[[
 function get_batter_half_body_worldspace(b)
     local pos = get_batter_worldspace(b)
     pos.y = b.h/2
@@ -301,6 +289,7 @@ function get_batter_aim_pos(b)
         b.bat_aim_vec
     )
 end
+]]
 
 function update_batter(b, ball1)
     if b.player_num==nil then
@@ -407,6 +396,10 @@ function swing(batter, ball1)
 end
 
 function draw_batter(b)
+    assert(bases[1].x~=nil)
+    draw_player(b, get_batter_worldspace(b, bases[1]))
+
+    --[[
     -- determine world pos.
     local world_pos = get_batter_worldspace(b)
 
@@ -415,11 +408,13 @@ function draw_batter(b)
 
     -- determine batter screen space.
     local bx, by = world2screen(world_pos)
+    ]]
 
     --
     -- draw batter in running state.
     --
 
+    --[[
     if b.state==batter_running_unsafe or b.state==batter_running_safe then
         -- determine points to draw z and x.
         local zpos = bx - 5 - 5
@@ -432,12 +427,14 @@ function draw_batter(b)
 
         return
     end
+    ]]
 
     --
     -- draw batter in batting state.
     --
 
     -- draw bat.
+    --[[
     if b.state==batter_batting or b.state==batter_charging then
         -- determine whether to flip.
         local scale = 1
@@ -461,10 +458,13 @@ function draw_batter(b)
         local ax, ay = world2screen(get_batter_aim_pos(b))
         for i=0,1 do line(high_point_x, high_point_y-i, ax, ay-i, 9) end
     end
+    ]]
 
     -- draw baseball bat preview.
+    --[[
     local ax, ay = world2screen(get_batter_aim_pos(b))
     circ(ax, ay, 2, 6)
+    ]]
 end
 
 -->8
@@ -819,6 +819,8 @@ function init_game()
     ball1 = ball(raised_pitcher_mound, ball_holding)
 
     fielders = {catcher1, pitcher1}
+
+    batter1 = batter(-10, bases[1].z, nil, 'right')
 end
 
 function update_game()
@@ -887,6 +889,7 @@ function draw_game()
         {ball1.pos, ball1, draw_ball},
         {shadow_pos, nil, function() draw_ball(ball1, true) end},
         {catcher1.pos, catcher1, draw_player},
+        {batter1.pos, batter1, draw_batter},
     })
 
     -- draw sorted entities.

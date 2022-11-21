@@ -234,6 +234,11 @@ function batter(x, z, player_num, handedness)
     -- computed props:
     -- get_batter_worldspace(batter, home_plate_pos)
 
+    -- maintain 2 points in batter space to create the bat.
+    -- local top_point = vec3() -- y=topofchar, x=-side*2
+    local bottom_point = vec3() -- y=halfheight, x=side*2
+    -- rotate the bottom point in order to swing the bat.
+
     return assign(player(vec3(x, 0, z), player_num), {
         -- state of player.
         state = batter_batting,

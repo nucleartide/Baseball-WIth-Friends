@@ -96,6 +96,52 @@ function vec3_normalize(v)
 	return d
 end
 
+-- amount that is in common between two vectors.
+function vec3_dot(v1, v2)
+	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
+end
+
+--function crossProduct(v1, v2)
+--return [v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]]
+
+function matrix_multiply(m, v)
+	return vec3(
+		vec3_dot(m[1], v),
+		vec3_dot(m[2], v),
+		vec3_dot(m[3], v)
+	)
+end
+
+function rotate_angle_axis(v, angle, axis)
+	local ca = cos(angle)
+	local sa = sin(angle)
+	local t = 1 - ca
+	local x = v.x
+	local y = v.y
+	local z = v.z
+
+	-- copied from rosetta code javascript implementation.
+	-- recopy if something seems off, since i have no idea how this works lol.
+	local rotation_matrix = {
+        vec3(ca + x*x*t, x*y*t - z*sa, x*z*t + y*sa),
+        vec3(x*y*t + z*sa, ca + y*y*t, y*z*t - x*sa),
+        vec3(z*x*t - y*sa, z*y*t + x*sa, ca + z*z*t),
+	}
+
+	return matrix_multiply(rotation_matrix, v)
+end
+
+do
+	cls()
+	local v1 = vec3(1, 0, 0)
+	local axis = vec3(0, 1, 0)
+	local angle = -.75
+	local result = rotate_angle_axis(v1, angle, axis)
+	vec3_print(v1)
+	vec3_print(result)
+	assert(false, result)
+end
+
 --
 -- ## general math utilities.
 --
@@ -128,6 +174,10 @@ function distance2(a, b, ignore_x, ignore_y, ignore_z)
 
   -- scale output back up by 6 bits
   return sqrt(dsq)*64
+end
+
+function length(v)
+	return distance2(v, vec3())
 end
 
 -- modulo operator that works with lua indices, which start at 1.

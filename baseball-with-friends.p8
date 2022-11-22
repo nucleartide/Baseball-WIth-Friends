@@ -244,11 +244,11 @@ function batter(x, z, player_num, handedness)
 
         -- data representation of a held bat.
         -- pivot --- bat_knob ===== bat_end
-        pivot = vec3(2.5, player_obj.h*.5, 0),
+        pivot = vec3(3.5, player_obj.h*.5, 0),
         pivot_to_bat_knob_len = .5,
         bat_knob_to_bat_end_len = 5,
 
-        bat_z_angle = -.125, -- apply this rotation first.
+        bat_z_angle = -.15, -- apply this rotation first.
         bat_aim_angle = 0, -- use this to determine swing axis.
         bat_swing_angle = 0, -- angle around swing axis.
         -- get_swing_axis
@@ -430,7 +430,7 @@ function draw_batter(b)
     local pivot_pos = worldspace(world_pos, b.pivot)
     local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob))
     local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
-    for i=0,1 do
+    for i=1,2 do
         line(sx1, sy1+i, sx2, sy2+i, 9)
     end
 

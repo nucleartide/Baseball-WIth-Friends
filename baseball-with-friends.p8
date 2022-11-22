@@ -247,23 +247,15 @@ function batter(x, z, player_num, handedness)
         pivot = vec3(3.5, player_obj.h*.5, 0),
         pivot_to_bat_knob_len = .5,
         bat_knob_to_bat_end_len = 5,
-
-        bat_z_angle = -.15, -- apply this rotation first.
+        bat_z_angle = -.125, -- apply this rotation first.
         bat_aim_angle = 0, -- use this to determine swing axis.
         bat_swing_angle = 0, -- angle around swing axis.
         -- get_swing_axis
 
-        --
         -- bat animation fields.
-        --
-
-        -- animation timer.
-        -- in the case of running, this ranges from [0,1].
-        -- t = 0,
-
-        -- animation lengths (in frames).
-        -- charging_anim_len = 10, -- cycle every 10 frames.
-        -- swing_anim_len = .5*60, -- half a second.
+        t = 0,
+        charging_anim_len = 10, -- cycle every 10 frames.
+        swing_anim_len = .5*60, -- half a second.
 
         -- relative to get_batter_half_body_worldspace.
         -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
@@ -300,12 +292,12 @@ function get_batter_aim_pos(b)
 end
 ]]
 
-function update_batter(b, ball1)
+function update_batter(b)
     if b.player_num==nil then
         return
     end
 
-    -- hold x to charge
+    -- hold x to charge.
     if b.state==batter_batting and btnp(4, b.player_num) then
         b.state = batter_charging
         return
@@ -318,13 +310,14 @@ function update_batter(b, ball1)
     end
 
     -- release x to swing.
-    if b.state==batter_batting and btnr(4, b.player_num) then
+    if b.state==batter_charging and btnr(4, b.player_num) then
+        assert(false)
         b.state = batter_swinging
         b.t = 0
-        swing(b, ball1)
         return
     end
 
+    --[[
     -- if player is swinging,
     if b.state==batter_swinging then
         b.t += 1
@@ -359,9 +352,10 @@ function update_batter(b, ball1)
             b.last_button_pressed = 5
         end
     end
+    ]]
 end
 
-function swing(batter, ball1)
+function hit_ball(batter, ball1)
     local batter_pos = batter.pos
     assert(batter_pos~=nil)
 
@@ -855,13 +849,15 @@ function init_game()
 
     fielders = {catcher1, pitcher1}
 
-    batter1 = batter(-10, bases[1].z, nil, 'right')
+    batter1 = batter(-10, bases[1].z, 1, 'right')
 end
 
 function update_game()
-    -- assert(false, 'todo: revisit the logic here.')
+    -- bookkeeping.
+    btnr_update()
 
     update_fielder(pitcher1)
+    update_batter(batter1)
 
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1)

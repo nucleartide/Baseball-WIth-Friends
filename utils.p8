@@ -145,7 +145,7 @@ do
 	local result = rotate_angle_axis(v1, angle, axis)
 	vec3_print(v1)
 	vec3_print(result)
-	assert(false, result)
+	-- assert(false, result)
 end
 
 --

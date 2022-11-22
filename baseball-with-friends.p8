@@ -223,23 +223,14 @@ batter_swinging = 2
 batter_running_unsafe = 3
 batter_running_safe = 4
 
+-- goal for today: get this bat drawn and animated.
 function batter(x, z, player_num, handedness)
-    -- handedness = handedness or 'right'
-    -- local bat_aim_x = handedness=='right' and 5 or -5
-
     -- determine the rel_to_home_plate_pos.
     handedness = handedness or 'right'
     local rel_to_home_plate_x = handedness=='right' and -7 or 7
+    local player_obj = player(vec3(x, 0, z), player_num)
 
-    -- computed props:
-    -- get_batter_worldspace(batter, home_plate_pos)
-
-    -- maintain 2 points in batter space to create the bat.
-    -- local top_point = vec3() -- y=topofchar, x=-side*2
-    local bottom_point = vec3() -- y=halfheight, x=side*2
-    -- rotate the bottom point in order to swing the bat.
-
-    return assign(player(vec3(x, 0, z), player_num), {
+    return assign(player_obj, {
         -- state of player.
         state = batter_batting,
 
@@ -248,7 +239,19 @@ function batter(x, z, player_num, handedness)
         handedness = handedness,
 
         -- relative to home_plate_pos.
+        -- this is where the batter stands at home plate.
         rel_to_home_plate_pos = vec3(rel_to_home_plate_x, 0, 0),
+
+        -- data representation of a held bat.
+        -- pivot --- bat_knob ===== bat_end
+        pivot = vec3(2.5, player_obj.h*.5, 0),
+        pivot_to_bat_knob_len = .5,
+        bat_knob_to_bat_end_len = 5,
+
+        bat_z_angle = -.125, -- apply this rotation first.
+        bat_aim_angle = 0, -- use this to determine swing axis.
+        bat_swing_angle = 0, -- angle around swing axis.
+        -- get_swing_axis
 
         --
         -- bat animation fields.
@@ -278,6 +281,7 @@ function batter(x, z, player_num, handedness)
 end
 
 function get_batter_worldspace(b, home_plate_pos)
+    assert(home_plate_pos~=nil)
     return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
@@ -403,6 +407,32 @@ end
 function draw_batter(b)
     assert(bases[1].x~=nil)
     draw_player(b, get_batter_worldspace(b, bases[1]))
+
+    --
+    -- draw the player's bat.
+    --
+
+    -- compute the knob point.
+    local knob = vec3()
+    knob.y += b.pivot_to_bat_knob_len
+
+    -- compute the end point.
+    local bat_end = vec3_set(vec3(), knob)
+    bat_end.y += b.bat_knob_to_bat_end_len
+
+    -- rotate.
+    local angle = b.bat_z_angle
+    local rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
+    local rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
+
+    -- draw.
+    local world_pos = get_batter_worldspace(b, bases[1])
+    local pivot_pos = worldspace(world_pos, b.pivot)
+    local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob))
+    local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
+    for i=0,1 do
+        line(sx1, sy1+i, sx2, sy2+i, 9)
+    end
 
     --[[
     -- determine world pos.

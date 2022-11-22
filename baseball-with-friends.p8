@@ -311,22 +311,21 @@ function update_batter(b)
 
     -- release x to swing.
     if b.state==batter_charging and btnr(4, b.player_num) then
-        assert(false)
         b.state = batter_swinging
         b.t = 0
         return
     end
 
-    --[[
     -- if player is swinging,
     if b.state==batter_swinging then
         b.t += 1
         if (b.t == b.swing_anim_len) then
             b.t = 0
-            b.state = batter_batting
+            assert(false)
         end
     end
 
+    --[[
     -- if player is batting,
     if b.state==batter_batting then
         if btn(0, b.player_num) then

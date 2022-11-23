@@ -256,7 +256,7 @@ function batter(x, z, player_num, handedness)
         -- bat animation fields.
         t = 0,
         charging_anim_len = 10, -- cycle every 10 frames.
-        swing_anim_len = .5*60, -- half a second.
+        swing_anim_len = .2*60, -- half a second.
 
         -- relative to get_batter_half_body_worldspace.
         -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
@@ -328,7 +328,7 @@ function update_batter(b)
     -- if player is swinging,
     if b.state==batter_swinging then
         b.t += 1
-        if (b.t == b.swing_anim_len) then
+        if (b.t >= b.swing_anim_len) then
             b.t = 0
             b.state = batter_batting
             -- assert(false)
@@ -427,14 +427,41 @@ function draw_batter(b)
     local angle = b.bat_z_angle
     local rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
     local rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
-
-    -- draw.
     local world_pos = get_batter_worldspace(b, bases[1])
     local pivot_pos = worldspace(world_pos, b.pivot)
-    local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob))
-    local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
-    for i=1,2 do
-        line(sx1, sy1+i, sx2, sy2+i, 9)
+
+    -- additional rotation when swinging.
+    if b.state==batter_swinging then
+        -- determine the swing axis.
+        local swing_axis = rotate_angle_axis(vec3(0,1,0), b.reticle_z_angle + .25, vec3(0,0,1))
+        -- vec3_print(swing_axis, true)
+
+        -- compute angle from t.
+        local swing_angle = 1 - b.t / b.swing_anim_len
+
+        -- rotate the bat to the correct z angle.
+        local bat_starting_angle = b.reticle_z_angle + .5
+        -- function rotate_angle_axis(v, angle, axis)
+        local rotated_knob = rotate_angle_axis(knob, bat_starting_angle, vec3(0,0,1))
+        local rotated_bat_end = rotate_angle_axis(bat_end, bat_starting_angle, vec3(0,0,1))
+
+        -- rotate the bat based on the current t.
+        rotated_knob2 = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
+        rotated_bat_end2 = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
+
+        -- draw.
+        local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob2))
+        local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end2))
+        for i=1,2 do
+            line(sx1, sy1+i, sx2, sy2+i, 9)
+        end
+    else
+        -- draw.
+        local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob))
+        local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
+        for i=1,2 do
+            line(sx1, sy1+i, sx2, sy2+i, 9)
+        end
     end
 
     --

@@ -256,7 +256,7 @@ function batter(x, z, player_num, handedness)
         -- bat animation fields.
         t = 0,
         charging_anim_len = 10, -- cycle every 10 frames.
-        swing_anim_len = .2*60, -- half a second.
+        swing_anim_len = .8*60, -- half a second.
 
         -- relative to get_batter_half_body_worldspace.
         -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
@@ -328,7 +328,11 @@ function update_batter(b)
     -- if player is swinging,
     if b.state==batter_swinging then
         b.t += 1
-        if (b.t >= b.swing_anim_len) then
+
+        local t = b.t / b.swing_anim_len
+        if .4<t and t<.6 then
+            handle_ball_hit(nil, nil, ball1)
+        elseif (b.t >= b.swing_anim_len) then
             b.t = 0
             b.state = batter_batting
             -- assert(false)
@@ -364,52 +368,137 @@ function update_batter(b)
     ]]
 end
 
-function hit_ball(batter, ball1)
-    local batter_pos = batter.pos
-    assert(batter_pos~=nil)
+function handle_ball_hit(bat_knob, bat_end, ball)
+    assert(ball~=nil)
+    assert(bat_knob~=nil)
+    assert(bat_end~=nil)
+    assert(false, 'determine x diff')
+    assert(false, 'determine y diff')
+    assert(false, 'determine z diff')
+end
 
-    if ball1~=nil then
-        -- equation of line of bat. - y = mx + b
-        -- (x,y) would be the hit point of the bat.
-        local b = batter.pos.y + 5 -- y intercept
-        local m = -.33
-        local x = batter.pos.x + 5 -- [0, b.pos.x + 5]
-        local y = m*x + b
+function __hit_ball(batter, ball1)
+    -- equation of line of bat. - y = mx + b
+    -- (x,y) would be the hit point of the bat.
+    local b = batter.pos.y + 5 -- y intercept
+    local m = -.33
+    local x = batter.pos.x + 5 -- [0, b.pos.x + 5]
+    local y = m*x + b
 
-        -- compute x difference...
-        local x_diff = ball1.pos.x - x
+    -- compute x difference...
+    local x_diff = ball1.pos.x - x
 
-        -- compute y difference between bat and ball.
-            -- plot the x of the ball to get the y of the bat at that point.
-            -- then subtract.
-        local y_of_bat = m * ball1.pos.x + b
-        local y_of_ball = ball1.pos.y
-        local y_diff = y_of_ball - y_of_bat
+    -- compute y difference between bat and ball.
+        -- plot the x of the ball to get the y of the bat at that point.
+        -- then subtract.
+    local y_of_bat = m * ball1.pos.x + b
+    local y_of_ball = ball1.pos.y
+    local y_diff = y_of_ball - y_of_bat
 
-        -- compute the z difference too.
-        local z_diff = ball1.pos.z - batter.pos.z
+    -- compute the z difference too.
+    local z_diff = ball1.pos.z - batter.pos.z
 
-        -- throw with difference results.
-        -- if abs(x difference) is <= 10, then it's within range of bat.
-        -- if abs(y difference) is <= 10, then it's within range of bat.
-        -- if abs(z difference) is <= 10, then it's within range of bat.
-        if x_diff<=10 and y_diff<=10 and z_diff<=10 then
-            -- assert(false, x_diff .. ',' .. y_diff .. ',' .. z_diff)
+    -- throw with difference results.
+    -- if abs(x difference) is <= 10, then it's within range of bat.
+    -- if abs(y difference) is <= 10, then it's within range of bat.
+    -- if abs(z difference) is <= 10, then it's within range of bat.
+    if x_diff<=10 and y_diff<=10 and z_diff<=10 then
+        -- assert(false, x_diff .. ',' .. y_diff .. ',' .. z_diff)
 
-            -- set the velocity of the ball
-            -- ball1.vel.x = 0
-            -- todo: this needs tweaking, but is good enough for now.
-            ball1.vel.x = x_diff
-            ball1.vel.y = 30 * y_diff/10
-            ball1.vel.z = 30 - 50 * z_diff/10
-            ball1.state = ball_idle_physical_obj
-        end
+        -- set the velocity of the ball
+        -- ball1.vel.x = 0
+        -- todo: this needs tweaking, but is good enough for now.
+        ball1.vel.x = x_diff
+        ball1.vel.y = 30 * y_diff/10
+        ball1.vel.z = 30 - 50 * z_diff/10
+        ball1.state = ball_idle_physical_obj
     end
 end
 
+function __old_draw_batter(b)
+    --[[
+    -- determine world pos.
+    local world_pos = get_batter_worldspace(b)
+
+    -- draw player body.
+    draw_player(b, world_pos)
+
+    -- determine batter screen space.
+    local bx, by = world2screen(world_pos)
+    ]]
+
+    --
+    -- draw batter in running state.
+    --
+
+    --[[
+    if b.state==batter_running_unsafe or b.state==batter_running_safe then
+        -- determine points to draw z and x.
+        local zpos = bx - 5 - 5
+        local xpos = bx + 5
+        local y = by - 3
+
+        -- draw z.
+        print('❎', xpos, y, b.last_button_pressed==5 and 6 or 7)
+        print('🅾️', zpos, y, b.last_button_pressed==4 and 6 or 7)
+
+        return
+    end
+    ]]
+
+    --
+    -- draw batter in batting state.
+    --
+
+    -- draw bat.
+    --[[
+    if b.state==batter_batting or b.state==batter_charging then
+        -- determine whether to flip.
+        local scale = 1
+        if b.handedness == 'left' then scale *= -1 end
+
+        -- determine points of bat.
+        local high_point_x, high_point_y = bx - b.side*2*scale, by - b.h
+        local low_point_x, low_point_y = bx + b.side*2*scale, by - b.h*.5
+
+        -- actually draw bat.
+        for i=0,1 do
+            local c = 9
+            if b.t>(b.charging_anim_len*.5) then c = 8 end
+            line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
+        end
+    elseif b.state==batter_swinging then
+        -- determine points of bat.
+        local high_point_x, high_point_y = bx, by - b.h*.5
+
+        -- actually draw bat.
+        local ax, ay = world2screen(get_batter_aim_pos(b))
+        for i=0,1 do line(high_point_x, high_point_y-i, ax, ay-i, 9) end
+    end
+    ]]
+
+    -- draw baseball bat preview.
+    --[[
+    local ax, ay = world2screen(get_batter_aim_pos(b))
+    circ(ax, ay, 2, 6)
+    ]]
+end
+
+function compute_bat_knob_and_end_points()
+    -- ...
+end
+
+-- todo: compute the rotation of the bat in update, not in draw.
 function draw_batter(b)
+    -- precondition.
     assert(bases[1].x~=nil)
+
+    -- draw the player body.
     draw_player(b, get_batter_worldspace(b, bases[1]))
+
+    assert(false)
+
+--[[
 
     --
     -- draw the player's bat.
@@ -477,73 +566,7 @@ function draw_batter(b)
         local sx, sy = world2screen(worldspace(pivot_pos, rotated_reticle))
         circ(sx, sy, 2, 9)
     end
-
-    --[[
-    -- determine world pos.
-    local world_pos = get_batter_worldspace(b)
-
-    -- draw player body.
-    draw_player(b, world_pos)
-
-    -- determine batter screen space.
-    local bx, by = world2screen(world_pos)
-    ]]
-
-    --
-    -- draw batter in running state.
-    --
-
-    --[[
-    if b.state==batter_running_unsafe or b.state==batter_running_safe then
-        -- determine points to draw z and x.
-        local zpos = bx - 5 - 5
-        local xpos = bx + 5
-        local y = by - 3
-
-        -- draw z.
-        print('❎', xpos, y, b.last_button_pressed==5 and 6 or 7)
-        print('🅾️', zpos, y, b.last_button_pressed==4 and 6 or 7)
-
-        return
-    end
-    ]]
-
-    --
-    -- draw batter in batting state.
-    --
-
-    -- draw bat.
-    --[[
-    if b.state==batter_batting or b.state==batter_charging then
-        -- determine whether to flip.
-        local scale = 1
-        if b.handedness == 'left' then scale *= -1 end
-
-        -- determine points of bat.
-        local high_point_x, high_point_y = bx - b.side*2*scale, by - b.h
-        local low_point_x, low_point_y = bx + b.side*2*scale, by - b.h*.5
-
-        -- actually draw bat.
-        for i=0,1 do
-            local c = 9
-            if b.t>(b.charging_anim_len*.5) then c = 8 end
-            line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
-        end
-    elseif b.state==batter_swinging then
-        -- determine points of bat.
-        local high_point_x, high_point_y = bx, by - b.h*.5
-
-        -- actually draw bat.
-        local ax, ay = world2screen(get_batter_aim_pos(b))
-        for i=0,1 do line(high_point_x, high_point_y-i, ax, ay-i, 9) end
-    end
-    ]]
-
-    -- draw baseball bat preview.
-    --[[
-    local ax, ay = world2screen(get_batter_aim_pos(b))
-    circ(ax, ay, 2, 6)
-    ]]
+]]
 end
 
 -->8

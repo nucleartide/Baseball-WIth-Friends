@@ -484,8 +484,54 @@ function __old_draw_batter(b)
     ]]
 end
 
-function compute_bat_knob_and_end_points()
-    -- ...
+function compute_bat_knob_and_end_points(b)
+    -- compute the knob point.
+    local knob = vec3()
+    knob.y += b.pivot_to_bat_knob_len
+
+    -- compute the end point.
+    local bat_end = vec3_set(vec3(), knob)
+    bat_end.y += b.bat_knob_to_bat_end_len
+
+    -- determine the pivot around which the bat swings.
+    local world_pos = get_batter_worldspace(b, bases[1])
+    local pivot_pos = worldspace(world_pos, b.pivot)
+
+    -- rotate depending on batter state.
+    if b.state==batter_swinging then
+        -- ...
+    elseif b.state==batter_batting or b.state==batter_charging then
+        local angle = b.bat_z_angle
+        local rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
+        local rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
+
+        --[[
+        ]]
+    end
+
+    --[[
+    -- rotate.
+    -- additional rotation when swinging.
+    if b.state==batter_swinging then
+        -- determine the swing axis.
+        local swing_axis = rotate_angle_axis(vec3(0,1,0), b.reticle_z_angle + .25, vec3(0,0,1))
+        -- vec3_print(swing_axis, true)
+
+        -- compute angle from t.
+        local swing_angle = 1 - b.t / b.swing_anim_len
+
+        -- rotate the bat to the correct z angle.
+        local bat_starting_angle = b.reticle_z_angle + .5
+        -- function rotate_angle_axis(v, angle, axis)
+        local rotated_knob = rotate_angle_axis(knob, bat_starting_angle, vec3(0,0,1))
+        local rotated_bat_end = rotate_angle_axis(bat_end, bat_starting_angle, vec3(0,0,1))
+
+        -- rotate the bat based on the current t.
+        rotated_knob2 = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
+        rotated_bat_end2 = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
+    else
+    end
+    ]]
 end
 
 -- todo: compute the rotation of the bat in update, not in draw.

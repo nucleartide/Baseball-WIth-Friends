@@ -554,3 +554,7 @@ do
 		end
 	end
 end
+
+function clamp(n, a, b)
+	return max(min(n, b), a)
+end

@@ -251,6 +251,7 @@ function batter(x, z, player_num, handedness)
         bat_aim_angle = 0, -- use this to determine swing axis.
         bat_swing_angle = 0, -- angle around swing axis.
         -- get_swing_axis
+        reticle_z_angle = .25,
 
         -- bat animation fields.
         t = 0,
@@ -305,6 +306,14 @@ function update_batter(b)
 
     -- if player is charging,
     if b.state==batter_charging and btn(4, b.player_num) then
+        -- move the reticle up and down.
+        if btn(2, b.player_num) then
+            b.reticle_z_angle -= 0.01
+        elseif btn(3, b.player_num) then
+            b.reticle_z_angle += 0.01
+        end
+        b.reticle_z_angle = clamp(b.reticle_z_angle, .125, .375)
+
         -- cycle the animation timer.
         b.t = (b.t + 1)%b.charging_anim_len
     end
@@ -321,7 +330,8 @@ function update_batter(b)
         b.t += 1
         if (b.t == b.swing_anim_len) then
             b.t = 0
-            assert(false)
+            b.state = batter_batting
+            -- assert(false)
         end
     end
 
@@ -425,6 +435,20 @@ function draw_batter(b)
     local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
     for i=1,2 do
         line(sx1, sy1+i, sx2, sy2+i, 9)
+    end
+
+    --
+    -- draw the reticle.
+    --
+
+    if b.state == batter_charging then
+        -- compute.
+        local angle = b.reticle_z_angle
+        local rotated_reticle = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
+
+        -- draw.
+        local sx, sy = world2screen(worldspace(pivot_pos, rotated_reticle))
+        circ(sx, sy, 2, 9)
     end
 
     --[[

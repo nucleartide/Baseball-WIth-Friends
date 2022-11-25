@@ -252,11 +252,13 @@ function batter(x, z, player_num, handedness)
         bat_swing_angle = 0, -- angle around swing axis.
         -- get_swing_axis
         reticle_z_angle = .25,
+        -- rotated_knob = nil
+        -- rotated_bat_end = nil
 
         -- bat animation fields.
         t = 0,
         charging_anim_len = 10, -- cycle every 10 frames.
-        swing_anim_len = .8*60, -- half a second.
+        swing_anim_len = .25*60, -- half a second.
 
         -- relative to get_batter_half_body_worldspace.
         -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
@@ -331,13 +333,15 @@ function update_batter(b)
 
         local t = b.t / b.swing_anim_len
         if .4<t and t<.6 then
-            handle_ball_hit(nil, nil, ball1)
+            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b)
         elseif (b.t >= b.swing_anim_len) then
             b.t = 0
             b.state = batter_batting
-            -- assert(false)
         end
     end
+
+    -- compute the bat knob and bat end locatinos.
+    compute_bat_knob_and_end_points(b)
 
     --[[
     -- if player is batting,
@@ -368,13 +372,33 @@ function update_batter(b)
     ]]
 end
 
-function handle_ball_hit(bat_knob, bat_end, ball)
+function handle_ball_hit(bat_knob, bat_end, ball, batter)
     assert(ball~=nil)
-    assert(bat_knob~=nil)
-    assert(bat_end~=nil)
-    assert(false, 'determine x diff')
-    assert(false, 'determine y diff')
-    assert(false, 'determine z diff')
+    assert(batter~=nil)
+
+    bat_knob, bat_end = get_batter_bat_worldspace(batter)
+
+    -- find the t value of the ball in the x-axis.
+    local ball_pos = ball.pos
+    local a = batter.handedness=='right' and bat_knob or bat_end
+    local b = batter.handedness=='right' and bat_end  or bat_knob
+    local xt = inverse_lerp(ball_pos.x, a.x, b.x)
+
+    -- is in x range.
+    local is_in_x_range = 0<=xt and xt<=1
+
+    -- determine the y position of the bat.
+    local m = (b.y-a.y) / (b.x-a.x)
+    local x = ball_pos.x - a.x
+    local b = a.y
+    local y = m*x + b
+
+    -- is in y range.
+    local is_in_y_range = abs(y - ball_pos.y) < 3
+    -- assert(false, tostr(is_in_y_range))
+
+    -- assert(false, 'determine y diff')
+    -- assert(false, 'determine z diff')
 end
 
 function __hit_ball(batter, ball1)
@@ -493,45 +517,37 @@ function compute_bat_knob_and_end_points(b)
     local bat_end = vec3_set(vec3(), knob)
     bat_end.y += b.bat_knob_to_bat_end_len
 
-    -- determine the pivot around which the bat swings.
-    local world_pos = get_batter_worldspace(b, bases[1])
-    local pivot_pos = worldspace(world_pos, b.pivot)
-
     -- rotate depending on batter state.
-    if b.state==batter_swinging then
-        -- ...
-    elseif b.state==batter_batting or b.state==batter_charging then
-        local angle = b.bat_z_angle
-        local rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
-        local rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
-
-        --[[
-        ]]
-    end
-
-    --[[
-    -- rotate.
-    -- additional rotation when swinging.
     if b.state==batter_swinging then
         -- determine the swing axis.
         local swing_axis = rotate_angle_axis(vec3(0,1,0), b.reticle_z_angle + .25, vec3(0,0,1))
-        -- vec3_print(swing_axis, true)
 
-        -- compute angle from t.
+        -- determine the swing angle.
         local swing_angle = 1 - b.t / b.swing_anim_len
 
-        -- rotate the bat to the correct z angle.
+        -- rotate the bat to the correct starting z angle.
         local bat_starting_angle = b.reticle_z_angle + .5
-        -- function rotate_angle_axis(v, angle, axis)
         local rotated_knob = rotate_angle_axis(knob, bat_starting_angle, vec3(0,0,1))
         local rotated_bat_end = rotate_angle_axis(bat_end, bat_starting_angle, vec3(0,0,1))
 
-        -- rotate the bat based on the current t.
-        rotated_knob2 = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
-        rotated_bat_end2 = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
+        -- then, rotate the bat around the swing axis based on the current t.
+        b.rotated_knob = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
+        b.rotated_bat_end = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
     else
+        -- elseif b.state==batter_batting or b.state==batter_charging then
+        -- determine points for bat_knob and bat_end.
+        local angle = b.bat_z_angle
+        b.rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
+        b.rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
     end
-    ]]
+end
+
+function get_batter_bat_worldspace(b)
+    local world_pos = get_batter_worldspace(b, bases[1])
+    local pivot_pos = worldspace(world_pos, b.pivot)
+    local knob_pos = worldspace(pivot_pos, b.rotated_knob)
+    local bat_end_pos = worldspace(pivot_pos, b.rotated_bat_end)
+    return knob_pos, bat_end_pos
 end
 
 -- todo: compute the rotation of the bat in update, not in draw.
@@ -542,77 +558,30 @@ function draw_batter(b)
     -- draw the player body.
     draw_player(b, get_batter_worldspace(b, bases[1]))
 
-    assert(false)
+    -- determine the pivot around which the bat swings.
+    local knob_pos, bat_end_pos = get_batter_bat_worldspace(b)
 
---[[
-
-    --
     -- draw the player's bat.
-    --
-
-    -- compute the knob point.
-    local knob = vec3()
-    knob.y += b.pivot_to_bat_knob_len
-
-    -- compute the end point.
-    local bat_end = vec3_set(vec3(), knob)
-    bat_end.y += b.bat_knob_to_bat_end_len
-
-    -- rotate.
-    local angle = b.bat_z_angle
-    local rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
-    local rotated_bat_end = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
-    local world_pos = get_batter_worldspace(b, bases[1])
-    local pivot_pos = worldspace(world_pos, b.pivot)
-
-    -- additional rotation when swinging.
-    if b.state==batter_swinging then
-        -- determine the swing axis.
-        local swing_axis = rotate_angle_axis(vec3(0,1,0), b.reticle_z_angle + .25, vec3(0,0,1))
-        -- vec3_print(swing_axis, true)
-
-        -- compute angle from t.
-        local swing_angle = 1 - b.t / b.swing_anim_len
-
-        -- rotate the bat to the correct z angle.
-        local bat_starting_angle = b.reticle_z_angle + .5
-        -- function rotate_angle_axis(v, angle, axis)
-        local rotated_knob = rotate_angle_axis(knob, bat_starting_angle, vec3(0,0,1))
-        local rotated_bat_end = rotate_angle_axis(bat_end, bat_starting_angle, vec3(0,0,1))
-
-        -- rotate the bat based on the current t.
-        rotated_knob2 = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
-        rotated_bat_end2 = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
-
-        -- draw.
-        local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob2))
-        local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end2))
-        for i=1,2 do
-            line(sx1, sy1+i, sx2, sy2+i, 9)
-        end
-    else
-        -- draw.
-        local sx1, sy1 = world2screen(worldspace(pivot_pos, rotated_knob))
-        local sx2, sy2 = world2screen(worldspace(pivot_pos, rotated_bat_end))
-        for i=1,2 do
-            line(sx1, sy1+i, sx2, sy2+i, 9)
-        end
+    local sx1, sy1 = world2screen(knob_pos)
+    local sx2, sy2 = world2screen(bat_end_pos)
+    for i=1,2 do
+        line(sx1, sy1+i, sx2, sy2+i, 9)
     end
 
-    --
-    -- draw the reticle.
-    --
+assert(false, 'rethink reticle z angle')
 
+    -- draw the reticle.
     if b.state == batter_charging then
         -- compute.
         local angle = b.reticle_z_angle
-        local rotated_reticle = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
+        local rotated_reticle = rotate_angle_axis(b.rotated_bat_end, angle, vec3(0, 0, 1))
 
         -- draw.
+        local world_pos = get_batter_worldspace(b, bases[1])
+        local pivot_pos = worldspace(world_pos, b.pivot)
         local sx, sy = world2screen(worldspace(pivot_pos, rotated_reticle))
         circ(sx, sy, 2, 9)
     end
-]]
 end
 
 -->8

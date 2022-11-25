@@ -558,3 +558,8 @@ end
 function clamp(n, a, b)
 	return max(min(n, b), a)
 end
+
+-- given n, and bounds a and b, determine the t value.
+function inverse_lerp(n, a, b)
+	return (n - a) / (b - a)
+end

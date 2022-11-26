@@ -68,11 +68,27 @@ function vec3_sub_from(v1, v2)
 	return v1
 end
 
+function vec3_sub(v1, v2)
+	local new_v = vec3_set(vec3(), v1)
+	new_v.x -= v2.x
+	new_v.y -= v2.y
+	new_v.z -= v2.z
+	return new_v
+end
+
 function vec3_mul(v1, c)
 	v1.x *= c
 	v1.y *= c
 	v1.z *= c
 	return v1
+end
+
+function vec3_mul2(v1, c)
+	local v2 = vec3_set(vec(), v1)
+	v2.x *= c
+	v2.y *= c
+	v2.z *= c
+	return v2
 end
 
 function vec3_zero(v)
@@ -94,6 +110,15 @@ function vec3_normalize(v)
 	v.y /= d
 	v.z /= d
 	return d
+end
+
+function vec3_normalize2(v)
+	local d =distance2(vec3(), v)
+	local v2 = vec3_set(vec3(),v)
+	v2.x /= d
+	v2.y /= d
+	v2.z /= d
+	return v2
 end
 
 -- amount that is in common between two vectors.

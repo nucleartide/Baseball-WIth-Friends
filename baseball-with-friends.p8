@@ -388,54 +388,65 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
     local is_in_x_range = 0<=xt and xt<=1
 
     -- determine the y position of the bat.
-    local m = (b.y-a.y) / (b.x-a.x)
-    local x = ball_pos.x - a.x
-    local b = a.y
-    local y = m*x + b
+    local is_in_y_range
+    do
+        local m = (b.y-a.y) / (b.x-a.x)
+        local x = ball_pos.x - a.x
+        local b = a.y
+        local y = m*x + b
 
-    -- is in y range.
-    local is_in_y_range = abs(y - ball_pos.y) < 3
-    -- assert(false, tostr(is_in_y_range))
+        -- is in y range.
+        is_in_y_range = abs(y - ball_pos.y) < 3 -- sign should be useful for lift of the ball.
+    end
 
-    -- assert(false, 'determine y diff')
-    -- assert(false, 'determine z diff')
-end
+    local is_in_z_range
+    do
+        local m = (b.z-a.z) / (b.x-a.x)
+        local x = ball_pos.z - a.z
+        local b = a.z
+        local z = m*x + b
+        is_in_z_range = abs(z - ball_pos.z) < 3
+    end
 
-function __hit_ball(batter, ball1)
-    -- equation of line of bat. - y = mx + b
-    -- (x,y) would be the hit point of the bat.
-    local b = batter.pos.y + 5 -- y intercept
-    local m = -.33
-    local x = batter.pos.x + 5 -- [0, b.pos.x + 5]
-    local y = m*x + b
+    if is_in_x_range and is_in_y_range and is_in_z_range then
+        -- set state of ball.
+        ball.state = ball_idle_physical_obj
 
-    -- compute x difference...
-    local x_diff = ball1.pos.x - x
+        -- determine the pivot in world space.
+        local world_pos = get_batter_worldspace(batter, bases[1])
+        local pivot_pos = worldspace(world_pos, batter.pivot)
 
-    -- compute y difference between bat and ball.
-        -- plot the x of the ball to get the y of the bat at that point.
-        -- then subtract.
-    local y_of_bat = m * ball1.pos.x + b
-    local y_of_ball = ball1.pos.y
-    local y_diff = y_of_ball - y_of_bat
+        -- determine the ball vector relative to pivot.
+        local ball_in_pivot_space = vec3_sub(ball_pos, pivot_pos)
 
-    -- compute the z difference too.
-    local z_diff = ball1.pos.z - batter.pos.z
+        -- determine the bat vector relative to pivot.
+        local rotated_knob = batter.rotated_knob
+        local rotated_bat_end = batter.rotated_bat_end
 
-    -- throw with difference results.
-    -- if abs(x difference) is <= 10, then it's within range of bat.
-    -- if abs(y difference) is <= 10, then it's within range of bat.
-    -- if abs(z difference) is <= 10, then it's within range of bat.
-    if x_diff<=10 and y_diff<=10 and z_diff<=10 then
-        -- assert(false, x_diff .. ',' .. y_diff .. ',' .. z_diff)
+        -- determine the bat vector normalized relative to pivot. this is the bat direction.
+        local bat_direction = vec3_normalize2(rotated_bat_end)
 
-        -- set the velocity of the ball
-        -- ball1.vel.x = 0
-        -- todo: this needs tweaking, but is good enough for now.
-        ball1.vel.x = x_diff
-        ball1.vel.y = 30 * y_diff/10
-        ball1.vel.z = 30 - 50 * z_diff/10
-        ball1.state = ball_idle_physical_obj
+        -- compute the dot product of both ball and bat vectors. this gives the magnitude of projection.
+        local magnitude_of_projection = vec3_dot(ball_in_pivot_space, bat_direction)
+
+        -- multiply the magnitude and bat direction to get the projection vector.
+        local projection_vector = vec3_mul(bat_direction, magnitude_of_projection)
+        printh('is it me you are looking for:')
+        vec3_print(ball_in_pivot_space, true)
+        vec3_print(projection_vector, true)
+
+        -- compute the projection-to-ball vector, and normalize.
+        local direction_vector = vec3_sub(ball_in_pivot_space, projection_vector)
+        vec3_print(direction_vector, true)
+        direction_vector = vec3_normalize2(direction_vector)
+        vec3_print(direction_vector, true)
+        assert(false)
+
+        -- set the ball's velocity to some arbitrary velocity for now. and test!
+        ball.vel.x = direction_vector.x * 10
+        ball.vel.y = direction_vector.y * 10
+        ball.vel.z = direction_vector.z * 10
+        assert(false, '')
     end
 end
 
@@ -550,6 +561,8 @@ function get_batter_bat_worldspace(b)
     return knob_pos, bat_end_pos
 end
 
+assert(false, 'it seems the ball is getting thrown back even though it should be hit, please fix')
+
 -- todo: compute the rotation of the bat in update, not in draw.
 function draw_batter(b)
     -- precondition.
@@ -568,19 +581,18 @@ function draw_batter(b)
         line(sx1, sy1+i, sx2, sy2+i, 9)
     end
 
-assert(false, 'rethink reticle z angle')
-
     -- draw the reticle.
     if b.state == batter_charging then
         -- compute.
         local angle = b.reticle_z_angle
-        local rotated_reticle = rotate_angle_axis(b.rotated_bat_end, angle, vec3(0, 0, 1))
+        local bat_end = vec3(0, b.pivot_to_bat_knob_len + b.bat_knob_to_bat_end_len, 0)
+        local rotated_reticle = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
 
         -- draw.
         local world_pos = get_batter_worldspace(b, bases[1])
         local pivot_pos = worldspace(world_pos, b.pivot)
         local sx, sy = world2screen(worldspace(pivot_pos, rotated_reticle))
-        circ(sx, sy, 2, 9)
+        circ(sx, sy+2, 2, 9)
     end
 end
 

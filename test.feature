@@ -43,11 +43,15 @@ Feature: batting
     @done
     scenario: releasing the bat
 
-    @ready-for-dev
+    @done
     scenario: moving left and right
         given a batter
         when i press left or right
         then i inch left or right in the batter's box.
+
+    # just needed to tweak the hit timing
+    @bug
+    scenario: can't hit ball on inner end of bat
 
     @ready-for-dev
     scenario: scorekeeping

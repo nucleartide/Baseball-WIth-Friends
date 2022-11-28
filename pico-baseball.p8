@@ -341,8 +341,9 @@ function update_batter(b)
         b.t += 1
 
         local t = b.t / b.swing_anim_len
-        if .4<t and t<.6 then
-            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b)
+        local in_range = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
+        if in_range then
+            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
         elseif (b.t >= b.swing_anim_len) then
             b.t = 0
             b.state = batter_batting
@@ -381,9 +382,10 @@ function update_batter(b)
     ]]
 end
 
-function handle_ball_hit(bat_knob, bat_end, ball, batter)
+function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
     assert(ball~=nil)
     assert(batter~=nil)
+    assert(swing_t~=nil)
 
     bat_knob, bat_end = get_batter_bat_worldspace(batter)
 
@@ -392,6 +394,9 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
     local a = batter.handedness=='right' and bat_knob or bat_end
     local b = batter.handedness=='right' and bat_end  or bat_knob
     local xt = inverse_lerp(ball_pos.x, a.x, b.x)
+
+    -- is in swing timing.
+    local in_swing_timing = .3<swing_t and swing_t<.7
 
     -- is in x range.
     local is_in_x_range = 0<=xt and xt<=1
@@ -417,7 +422,14 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         is_in_z_range = abs(z - ball_pos.z) < ball_hit_z_range
     end
 
-    if is_in_x_range and is_in_y_range and is_in_z_range then
+    return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range
+end
+
+function handle_ball_hit(bat_knob, bat_end, ball, batter)
+    assert(ball~=nil)
+    assert(batter~=nil)
+    local ball_pos = ball.pos
+
         -- set state of ball.
         ball.state = ball_idle_physical_obj
 
@@ -454,7 +466,6 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         ball.vel.y = direction_vector.y * 20
         ball.vel.z = abs(direction_vector.z) * 20
         printh('ball was hit')
-    end
 end
 
 function __old_draw_batter(b)

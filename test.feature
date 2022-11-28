@@ -71,6 +71,9 @@ Feature: batting
     @bug
     scenario: no sound
 
+    @bug
+    scenario: can't hit home runs
+
     @ready-for-dev
     scenario: timeout after ball is hit or caught or neither, then scorekeeping
 

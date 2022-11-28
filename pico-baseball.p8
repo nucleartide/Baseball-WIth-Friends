@@ -6,13 +6,11 @@ __lua__
 
 #include utils.p8
 
---[[
-
-todo:
-
-- vec functions should just create new vectors
-
-]]
+ball_hit_z_range = 3 -- hit if ball is within 2.5 units on the z axis.
+ball_hit_y_range = 3 -- hit if ball is within 3 units on the y axis.
+ball_catch_radius = 2 -- catch if ball is within 2.5 units.
+-- note that ball_hit_z_range and ball_catch_radius should add to 5.
+debug = true
 
 -->8
 -- static objects.
@@ -396,7 +394,7 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         local y = m*x + b
 
         -- is in y range.
-        is_in_y_range = abs(y - ball_pos.y) < 3 -- sign should be useful for lift of the ball.
+        is_in_y_range = abs(y - ball_pos.y) < ball_hit_y_range -- sign should be useful for lift of the ball.
     end
 
     local is_in_z_range
@@ -405,7 +403,7 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         local x = ball_pos.z - a.z
         local b = a.z
         local z = m*x + b
-        is_in_z_range = abs(z - ball_pos.z) < 3
+        is_in_z_range = abs(z - ball_pos.z) < ball_hit_z_range
     end
 
     if is_in_x_range and is_in_y_range and is_in_z_range then
@@ -431,7 +429,6 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
 
         -- multiply the magnitude and bat direction to get the projection vector.
         local projection_vector = vec3_mul(bat_direction, magnitude_of_projection)
-        printh('is it me you are looking for:')
         vec3_print(ball_in_pivot_space, true)
         vec3_print(projection_vector, true)
 
@@ -440,13 +437,12 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         vec3_print(direction_vector, true)
         direction_vector = vec3_normalize2(direction_vector)
         vec3_print(direction_vector, true)
-        assert(false)
 
         -- set the ball's velocity to some arbitrary velocity for now. and test!
-        ball.vel.x = direction_vector.x * 10
-        ball.vel.y = direction_vector.y * 10
-        ball.vel.z = direction_vector.z * 10
-        assert(false, '')
+        ball.vel.x = direction_vector.x * 20
+        ball.vel.y = direction_vector.y * 20
+        ball.vel.z = abs(direction_vector.z) * 20
+        printh('ball was hit')
     end
 end
 
@@ -561,8 +557,6 @@ function get_batter_bat_worldspace(b)
     return knob_pos, bat_end_pos
 end
 
-assert(false, 'it seems the ball is getting thrown back even though it should be hit, please fix')
-
 -- todo: compute the rotation of the bat in update, not in draw.
 function draw_batter(b)
     -- precondition.
@@ -587,12 +581,41 @@ function draw_batter(b)
         local angle = b.reticle_z_angle
         local bat_end = vec3(0, b.pivot_to_bat_knob_len + b.bat_knob_to_bat_end_len, 0)
         local rotated_reticle = rotate_angle_axis(bat_end, angle, vec3(0, 0, 1))
-
-        -- draw.
         local world_pos = get_batter_worldspace(b, bases[1])
         local pivot_pos = worldspace(world_pos, b.pivot)
+
+        -- draw.
+
+        if debug then
+            local downward = vec3_set(vec3(), rotated_reticle)
+            downward.y -= ball_hit_y_range
+            local sx, sy = world2screen(worldspace(pivot_pos, downward))
+            circ(sx, sy, 1, 11)
+        end
+
+        if debug then
+            local forward = vec3_set(vec3(), rotated_reticle)
+            forward.z += ball_hit_z_range
+            local sx, sy = world2screen(worldspace(pivot_pos, forward))
+            circ(sx, sy, 1, 10)
+        end
+
         local sx, sy = world2screen(worldspace(pivot_pos, rotated_reticle))
         circ(sx, sy+2, 2, 9)
+
+        if debug then
+            local upward = vec3_set(vec3(), rotated_reticle)
+            upward.y += ball_hit_y_range
+            local sx, sy = world2screen(worldspace(pivot_pos, upward))
+            circ(sx, sy, 1, 11)
+        end
+
+        if debug then
+            local backward = vec3_set(vec3(), rotated_reticle)
+            backward.z -= ball_hit_z_range
+            local sx, sy = world2screen(worldspace(pivot_pos, backward))
+            circ(sx, sy, 1, 10)
+        end
     end
 end
 
@@ -726,7 +749,7 @@ function ball(pos, initial_state)
 end
 
 function simulate_as_rigidbody(b, fielders)
-    assert(fielders~=nil)
+    -- assert(fielders~=nil)
     local spare1, spare2 = vec3(), vec3()
 
     -- update vel.
@@ -742,7 +765,7 @@ function simulate_as_rigidbody(b, fielders)
     if (b.pos.y<0) b.pos.y=0
     -- if (b.pos.y<=0) vec3_zero(b.vel)
 
-    pick_up_ball_if_nearby(b, fielders)
+    -- pick_up_ball_if_nearby(b, fielders)
 end
 
 function throw_ball(b, trajectory)
@@ -781,7 +804,7 @@ function pick_up_ball_if_nearby(b, fielders)
     assert(#fielders>0)
     for f in all(fielders) do
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
-        if d<5 then
+        if d<ball_catch_radius then
             b.state = ball_holding
 
             if f~=pitcher1 then
@@ -815,8 +838,6 @@ function animate_thrown_ball(b)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
-
-    vec3_print(b.pos, true)
 
     -- if the ball has been thrown, then
     if t>.2 then
@@ -953,17 +974,34 @@ function init_game()
 end
 
 function update_game()
+
+    --
     -- bookkeeping.
+    --
+
     btnr_update()
+
+    --
+    -- game logic.
+    --
 
     update_fielder(pitcher1)
     update_batter(batter1)
 
+    --
+    -- ball updates.
+    --
+
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1)
+    elseif ball1.state == ball_idle_physical_obj then
+        simulate_as_rigidbody(ball1)
     end
 
+    --
     -- bookkeeping.
+    --
+
     count_down_timers()
 end
 
@@ -972,6 +1010,8 @@ function draw_game()
 
     print(ball1.state)
     print(stat(1))
+    print(fielders[1].pos.z)
+    print(batter1.pos.z)
 
     -- draw sand around home plate.
     do

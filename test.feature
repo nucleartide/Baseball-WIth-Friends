@@ -34,26 +34,23 @@ Feature: batting
         when i press z
         then i want to see the batting range for debugging
 
-    @ready-for-dev
-    Scenario: charging the bat
-        Given blah
-        When Start to type your When step here
-        Then Start to type your Then step here
-
-    @ready-for-dev
+    @done
     scenario: hitting the ball
 
-    @ready-for-dev
+    @done
     scenario: aiming up and down
+
+    @done
+    scenario: releasing the bat
 
     @ready-for-dev
     scenario: moving left and right
+        given a batter
+        when i press left or right
+        then i inch left or right in the batter's box.
 
     @ready-for-dev
     scenario: scorekeeping
-
-    @ready-for-dev
-    scenario: releasing the bat
 
 feature: pitching (out of scope)
 
@@ -61,6 +58,12 @@ feature: pitching (out of scope)
     scenario: curve ball
 
 feature: batting (out of scope)
+
+    @out-of-scope
+    Scenario: charging the bat
+        Given blah
+        When Start to type your When step here
+        Then Start to type your Then step here
 
     @out-of-scope
     scenario: using charged-up energy

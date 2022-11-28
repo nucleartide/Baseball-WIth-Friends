@@ -11,6 +11,7 @@ ball_hit_y_range = 3 -- hit if ball is within 3 units on the y axis.
 ball_catch_radius = 2 -- catch if ball is within 2.5 units.
 -- note that ball_hit_z_range and ball_catch_radius should add to 5.
 debug = true
+rel_to_home_plate_x = 7
 
 -->8
 -- static objects.
@@ -225,7 +226,7 @@ batter_running_safe = 4
 function batter(x, z, player_num, handedness)
     -- determine the rel_to_home_plate_pos.
     handedness = handedness or 'right'
-    local rel_to_home_plate_x = handedness=='right' and -7 or 7
+    local relx = handedness=='right' and -rel_to_home_plate_x or rel_to_home_plate_x
     local player_obj = player(vec3(x, 0, z), player_num)
 
     return assign(player_obj, {
@@ -238,7 +239,8 @@ function batter(x, z, player_num, handedness)
 
         -- relative to home_plate_pos.
         -- this is where the batter stands at home plate.
-        rel_to_home_plate_pos = vec3(rel_to_home_plate_x, 0, 0),
+        rel_to_home_plate_pos = vec3(relx, 0, 0),
+        init_relx = relx,
 
         -- data representation of a held bat.
         -- pivot --- bat_knob ===== bat_end
@@ -313,6 +315,15 @@ function update_batter(b)
             b.reticle_z_angle += 0.01
         end
         b.reticle_z_angle = clamp(b.reticle_z_angle, .125, .375)
+
+        -- move the batter left and right.
+        if btn(0, b.player_num) then
+            b.rel_to_home_plate_pos.x -= 0.1
+        end
+        if btn(1, b.player_num) then
+            b.rel_to_home_plate_pos.x += 0.1
+        end
+        b.rel_to_home_plate_pos.x = clamp(b.rel_to_home_plate_pos.x, b.init_relx - 2.5, b.init_relx + 2.5)
 
         -- cycle the animation timer.
         b.t = (b.t + 1)%b.charging_anim_len

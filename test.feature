@@ -50,11 +50,29 @@ Feature: batting
         then i inch left or right in the batter's box.
 
     # just needed to tweak the hit timing
-    @bug
+    @bug @still-a-bug
     scenario: can't hit ball on inner end of bat
 
+    @bug
+    scenario: can't control direction of hit that well
+
+    @bug
+    scenario: catcher sometimes still catches ball
+
+    @bug
+    scenario: pitcher can't rethrow when ball is in motion
+
+    @bug
+    scenario: show some hit particles upon hit
+
+    @bug
+    scenario: sprites are boxes
+
+    @bug
+    scenario: no sound
+
     @ready-for-dev
-    scenario: scorekeeping
+    scenario: timeout after ball is hit or caught or neither, then scorekeeping
 
 feature: pitching (out of scope)
 

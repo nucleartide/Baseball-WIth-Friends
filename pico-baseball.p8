@@ -6,7 +6,7 @@ __lua__
 
 #include utils.p8
 
-ball_hit_z_range = 3 -- hit if ball is within 2.5 units on the z axis.
+ball_hit_z_range = 2 -- hit if ball is within 2.5 units on the z axis.
 ball_hit_y_range = 3 -- hit if ball is within 3 units on the y axis.
 ball_catch_radius = 2 -- catch if ball is within 2.5 units.
 -- note that ball_hit_z_range and ball_catch_radius should add to 5.
@@ -342,7 +342,7 @@ function update_batter(b)
         b.t += 1
 
         local t = b.t / b.swing_anim_len
-        local in_range = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
+        local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
         if in_range then
             handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
         elseif (b.t >= b.swing_anim_len) then
@@ -423,10 +423,10 @@ function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
         is_in_z_range = abs(z - ball_pos.z) < ball_hit_z_range
     end
 
-    return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range
+    return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range, xt
 end
 
-function handle_ball_hit(bat_knob, bat_end, ball, batter)
+function handle_ball_hit(bat_knob, bat_end, ball, batter, xt)
     assert(ball~=nil)
     assert(batter~=nil)
     local ball_pos = ball.pos
@@ -463,10 +463,9 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter)
         vec3_print(direction_vector, true)
 
         -- set the ball's velocity to some arbitrary velocity for now. and test!
-        ball.vel.x = direction_vector.x * 20
-        ball.vel.y = direction_vector.y * 20
-        ball.vel.z = abs(direction_vector.z) * 20
-        printh('ball was hit')
+        ball.vel.x = direction_vector.x * xt * 200
+        ball.vel.y = direction_vector.y * xt * 200
+        ball.vel.z = abs(direction_vector.z) * xt * 200
 end
 
 function __old_draw_batter(b)

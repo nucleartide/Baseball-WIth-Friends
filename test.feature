@@ -61,31 +61,58 @@ Feature: batting
     @bug @done
     scenario: catcher sometimes still catches ball
 
-    @bug
+    @bug @done
     scenario: pitcher can't rethrow when ball is in motion
 
-    @bug
-    scenario: show some hit particles upon hit
-
-    @bug
-    scenario: sprites are boxes
-
-    @bug
-    scenario: no sound
-
-    @bug
-    scenario: can't hit home runs
-
-    @bug
-    scenario: meat of bat has more power
+    @bug @done
+    scenario: can't hit home runs, meat of bat has more power
 
     @ready-for-dev
     scenario: timeout after ball is hit or caught or neither, then scorekeeping
+#         Scorekeeping logic
+#         * Hit
+#             * Foul ball
+#             * Home run
+#             * Line drive
+#         * Strike
+#             * Swing and a miss
+#             * Strike zone, no swing
+#         * Ball
+#             * Not in strike zone, no swing
+#         * 4 balls: walk!
+#         * Strikeout: 3 strikes
+#         * Outs
+#         * 3 outs: inning over
+#             - [ ] increment innings for current team
+#             - [ ] teams switch roles.
+#             - [ ] Increment inning
+#             - [ ] If there are no innings remaining, go to victory condition
+#         * Scorekeeping action UI
+#         * Victory conditions (go to victory conditions section)
+#             * Game over
+
+    @ready-for-dev
+    scenario: camera juice, audience, crowd roaring
+
+    @cleanup
+    scenario: ...
+        charging
 
 feature: pitching (out of scope)
 
     @out-of-scope
     scenario: curve ball
+
+feature: batting (not mechanics)
+
+    @juice
+    scenario: show some hit particles upon hit
+
+    @art
+    scenario: sprites are boxes
+
+    @sound
+    scenario: no sound
 
 feature: batting (out of scope)
 

@@ -200,8 +200,9 @@ function update_fielder(f)
         return
     end
 
-    if btnp(4, f.player_num) then
+    if btnp(4, f.player_num) and ball1.is_owned_by==f then
         throw_ball(ball1, f.pitches[1])
+        ball1.is_owned_by = nil
     end
 end
 
@@ -747,7 +748,8 @@ ball_holding = 0
 ball_throwing = 1
 ball_idle_physical_obj = 2
 
-function ball(pos, initial_state)
+function ball(pos, initial_state, is_owned_by)
+    assert(is_owned_by~=nil)
     return {
         -- physical properties.
         pos = vec3_set(vec3(), pos),
@@ -756,7 +758,7 @@ function ball(pos, initial_state)
 
         -- the fielder that is holding the ball.
         -- will be used soon.
-        is_owned_by = nil,
+        is_owned_by = is_owned_by,
 
         -- throw animation.
         t = 0, -- timer field used for animation.
@@ -828,10 +830,12 @@ function pick_up_ball_if_nearby(b, fielders)
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
         if d<ball_catch_radius then
             b.state = ball_holding
+            b.is_owned_by = f
 
             if f~=pitcher1 then
                 -- after 1s, catcher throws the ball back.
                 delay(function()
+                    b.is_owned_by = nil
                     return_ball_to_pitcher(b, f, pitcher1)
                 end, 60)
             end
@@ -982,13 +986,13 @@ function init_game()
 
     do
         local catcher_pos = vec3_set(vec3(), bases[1])
-        catcher_pos.z -= 5
+        catcher_pos.z -= 8
         catcher1 = fielder(catcher_pos, nil)
     end
 
     gravity = -20
 
-    ball1 = ball(raised_pitcher_mound, ball_holding)
+    ball1 = ball(raised_pitcher_mound, ball_holding, pitcher1)
 
     fielders = {catcher1, pitcher1}
 
@@ -1030,10 +1034,11 @@ end
 function draw_game()
     cls(3)
 
-    print(ball1.state)
-    print(stat(1))
-    print(fielders[1].pos.z)
-    print(batter1.pos.z)
+    -- print(ball1.state)
+    -- print(stat(1))
+    -- print(fielders[1].pos.z)
+    -- print(batter1.pos.z)
+    print(ball1.is_owned_by)
 
     -- draw sand around home plate.
     do

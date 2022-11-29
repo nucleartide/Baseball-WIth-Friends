@@ -50,13 +50,15 @@ Feature: batting
         then i inch left or right in the batter's box.
 
     # just needed to tweak the hit timing
-    @bug @still-a-bug
+    # hitting ball on inner end of bat is rare
+    @bug @still-a-bug @done
     scenario: can't hit ball on inner end of bat
 
-    @bug
+    @bug @done
     scenario: can't control direction of hit that well
 
-    @bug
+    # moved catcher back a little
+    @bug @done
     scenario: catcher sometimes still catches ball
 
     @bug
@@ -73,6 +75,9 @@ Feature: batting
 
     @bug
     scenario: can't hit home runs
+
+    @bug
+    scenario: meat of bat has more power
 
     @ready-for-dev
     scenario: timeout after ball is hit or caught or neither, then scorekeeping

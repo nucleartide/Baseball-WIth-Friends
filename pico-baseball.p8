@@ -19,6 +19,8 @@ half_diagonal = 50 -- in world units.
 case 1
 
 [o] case: swing and hit (should have action UI)
+    [ ] define bounds for baseball
+    [ ] add bound for baseball
     [ ] (first) foul ball -> strike up to 2 strikes, otherwise nothing
         [ ] check for bouncing
         [ ] check for settling

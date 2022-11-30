@@ -12,6 +12,7 @@ ball_catch_radius = 2 -- catch if ball is within 2.5 units.
 -- note that ball_hit_z_range and ball_catch_radius should add to 5.
 debug = true
 rel_to_home_plate_x = 7
+half_diagonal = 50 -- in world units.
 
 --[[
 
@@ -19,6 +20,8 @@ case 1
 
 [o] case: swing and hit (should have action UI)
     [ ] (first) foul ball -> strike up to 2 strikes, otherwise nothing
+        [ ] check for bouncing
+        [ ] check for settling
     [ ] (second) line drive (normal hit) -> runners progress
     [ ] (second) timeout is reached (normal hit) -> runners progress
     [ ] (last) home run -> run
@@ -43,6 +46,11 @@ case 3
 
 [ ] game end condition
     [ ] side with most runs wins
+
+case 4
+
+[ ] add spin to ball to allow for fouls
+
 ]]
 
 -->8
@@ -826,11 +834,29 @@ function simulate_as_rigidbody(b, fielders)
         -- attenuate the x and z velocities.
         b.vel.x *= 0.8
         b.vel.z *= 0.8
+
+        -- at this point, check for a foul
+        local is_foul = check_for_foul_ball(b)
+        if (is_foul) then
+            assert(false)
+        end
     end
 end
 
 function check_for_foul_ball(ball1)
-    assert(false)
+    -- get the ball's z.
+    z = ball1.pos.z
+
+    -- check if the computed z is less than the
+    -- equation of the foul line.
+    -- z = m * x + b
+    local m = 1
+    local x = ball1.pos.x
+    local b = -half_diagonal
+    z_line = m * x + b
+    -- printh('z:' .. z)
+    -- printh('z_line:' .. z_line)
+    return z < z_line -- foul lines are still fair
 end
 
 function throw_ball(b, trajectory)
@@ -984,8 +1010,6 @@ end
 -- game state.
 
 function init_game()
-    half_diagonal = 50 -- in world units.
-
     bases = {
         vec3(0, 0, -half_diagonal), -- home
         vec3(half_diagonal, 0, 0), -- 1st
@@ -1075,6 +1099,10 @@ end
 
 function draw_game()
     cls(3)
+
+    print(ball1.pos.x .. ',' .. ball1.pos.y .. ',' .. ball1.pos.z, 0, 30)
+    print('z:' .. tostr(z), 0, 40)
+    print('z_line:' .. tostr(z_line),  0, 50)
 
     -- print(ball1.state)
     -- print(stat(1))

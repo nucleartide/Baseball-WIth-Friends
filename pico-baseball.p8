@@ -13,6 +13,39 @@ ball_catch_radius = 2 -- catch if ball is within 2.5 units.
 debug = true
 rel_to_home_plate_x = 7
 
+--[[
+
+case 1
+
+ui: strikes. runs. loaded bases.
+
+# case: swing and hit (should have action UI)
+    # foul ball -> strike up to 2 strikes, otherwise nothing
+    # home run -> run
+    # line drive (normal hit) -> runners progress
+    # timeout is reached (normal hit) -> runners progress
+# case: swing and miss -> strike
+# case: no swing
+    # strike zone -> strike
+    # not strike zone -> ball
+
+case 2
+
+# post score update
+# 4 balls: walk
+# 3 strikes: out
+# 3 outs: next inning
+    # increment inning
+    # switch roles
+    # if there are no innings, go to game end condition
+# 9 innings: game over
+
+# case 3
+
+# game end condition
+    # side with most runs wins
+]]
+
 -->8
 -- static objects.
 

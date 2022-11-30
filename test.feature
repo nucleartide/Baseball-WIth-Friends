@@ -68,35 +68,38 @@ Feature: batting
     scenario: can't hit home runs, meat of bat has more power
 
     @ready-for-dev
-    scenario: timeout after ball is hit or caught or neither, then scorekeeping
-#         Scorekeeping logic
-#         * Hit
-#             * Foul ball
-#             * Home run
-#             * Line drive
-#         * Strike
-#             * Swing and a miss
-#             * Strike zone, no swing
-#         * Ball
-#             * Not in strike zone, no swing
-#         * 4 balls: walk!
-#         * Strikeout: 3 strikes
-#         * Outs
-#         * 3 outs: inning over
-#             - [ ] increment innings for current team
-#             - [ ] teams switch roles.
-#             - [ ] Increment inning
-#             - [ ] If there are no innings remaining, go to victory condition
-#         * Scorekeeping action UI
-#         * Victory conditions (go to victory conditions section)
-#             * Game over
+    scenario: game scoring
 
-    @ready-for-dev
+# case: swing and hit (should have action UI)
+    # foul ball -> strike up to 2 strikes, otherwise nothing
+    # home run -> run
+    # line drive (normal hit) -> runners progress
+    # timeout is reached (normal hit) -> runners progress
+# case: swing and miss -> strike
+# case: no swing
+    # strike zone -> strike
+    # not strike zone -> ball
+
+# update score with strike or ball
+
+# post score update
+# 4 balls: walk
+# 3 strikes: out
+# 3 outs: next inning
+    # increment inning
+    # switch roles
+    # if there are no innings, go to game end condition
+# 9 innings: game over
+
+# game end condition
+    # side with most runs wins
+
+    @juice
     scenario: camera juice, audience, crowd roaring
 
     @cleanup
     scenario: ...
-        charging
+        charging the bat
 
 feature: pitching (out of scope)
 

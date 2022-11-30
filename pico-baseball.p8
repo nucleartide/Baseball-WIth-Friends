@@ -17,33 +17,32 @@ rel_to_home_plate_x = 7
 
 case 1
 
-ui: strikes. runs. loaded bases.
-
-# case: swing and hit (should have action UI)
-    # foul ball -> strike up to 2 strikes, otherwise nothing
-    # home run -> run
-    # line drive (normal hit) -> runners progress
-    # timeout is reached (normal hit) -> runners progress
-# case: swing and miss -> strike
-# case: no swing
-    # strike zone -> strike
-    # not strike zone -> ball
+[o] case: swing and hit (should have action UI)
+    [ ] (first) foul ball -> strike up to 2 strikes, otherwise nothing
+    [ ] (second) line drive (normal hit) -> runners progress
+    [ ] (second) timeout is reached (normal hit) -> runners progress
+    [ ] (last) home run -> run
+[ ] case: swing and miss -> strike
+[ ] case: no swing
+    [ ] strike zone -> strike
+    [ ] not strike zone -> ball
+[ ] color coding of teams
 
 case 2
 
-# post score update
-# 4 balls: walk
-# 3 strikes: out
-# 3 outs: next inning
-    # increment inning
-    # switch roles
-    # if there are no innings, go to game end condition
-# 9 innings: game over
+[ ] post score update
+[ ] 4 balls: walk
+[ ] 3 strikes: out
+[ ] 3 outs: next inning
+    [ ] increment inning
+    [ ] switch roles
+    [ ] if there are no innings, go to game end condition
+[ ] 9 innings: game over
 
-# case 3
+case 3
 
-# game end condition
-    # side with most runs wins
+[ ] game end condition
+    [ ] side with most runs wins
 ]]
 
 -->8
@@ -818,10 +817,20 @@ function simulate_as_rigidbody(b, fielders)
     vec3_add_to(b.pos, spare1)
 
     -- constrain pos.
-    if (b.pos.y<0) b.pos.y=0
-    -- if (b.pos.y<=0) vec3_zero(b.vel)
+    if (b.pos.y<0) then
+        b.pos.y=0
 
-    -- pick_up_ball_if_nearby(b, fielders)
+        -- add bounce velocity in the reverse direction.
+        b.vel.y *= -0.5
+
+        -- attenuate the x and z velocities.
+        b.vel.x *= 0.8
+        b.vel.z *= 0.8
+    end
+end
+
+function check_for_foul_ball(ball1)
+    assert(false)
 end
 
 function throw_ball(b, trajectory)
@@ -1054,6 +1063,7 @@ function update_game()
         animate_thrown_ball(ball1)
     elseif ball1.state == ball_idle_physical_obj then
         simulate_as_rigidbody(ball1)
+        -- check_for_foul_ball(ball1)
     end
 
     --
@@ -1070,7 +1080,7 @@ function draw_game()
     -- print(stat(1))
     -- print(fielders[1].pos.z)
     -- print(batter1.pos.z)
-    print(ball1.is_owned_by)
+    -- print(ball1.is_owned_by)
 
     -- draw sand around home plate.
     do
@@ -1128,6 +1138,20 @@ function draw_game()
         local draw_fn = t[3]
         draw_fn(entity_data)
     end
+
+    -- draw the ui.
+    print('dad 0', 0, 0)
+    print('jes 2', 0, 6)
+    print('⬇️4', 117, 0)
+    circfill(119, 8, 2, 1)
+    circfill(125, 8, 2, 1)
+
+    local x_offset = 0
+    local y_offset = 3
+    rectfill(88, 108+y_offset, 117, 116+y_offset, 0)
+    print('strike!', 90, 110+y_offset, 7)
+
+    print('2-2', 64-ceil(3*4*.5)+1, 0, 7)
 end
 
 -->8

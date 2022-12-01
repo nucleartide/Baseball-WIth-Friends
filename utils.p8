@@ -467,7 +467,7 @@ function world2screen(o, no_y, flip_x)
 
 	-- z. cannot be negative.
 	local z = o.z
-	z += 64 -- bump things forward so we can treat home plate as the origin.
+	z += 64 -- bump things forward so we can treat a point slightly behind home plate as the origin.
 	z = max(z, 0)
 
 	-- perspective factors.

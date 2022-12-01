@@ -13,10 +13,38 @@ ball_catch_radius = 2 -- catch if ball is within 2.5 units.
 debug = true
 rel_to_home_plate_x = 7
 half_diagonal = 50 -- in world units.
+game2real = 64/50 -- baseball field dimensions are scaled down from reality to keep gameplay tight together.
+real2game = 50/64
+
+ball_is_foul = 'foul'
+ball_is_home_run = 'home run'
+ball_is_in_field = 'in field'
+
+function in_game_bounds(v)
+    -- z values.
+    -- local behind_field_corner = (-113 * real2game) - half_diagonal
+    local home_plate = -half_diagonal
+    local in_front_field_corner = 389
+
+    local home_run_line = -abs(x) + in_front_field_corner
+    local foul_line = v.x + home_plate
+
+    local is_foul = v.z < foul_line
+    if is_foul then
+        return ball_is_foul
+    end
+
+    local is_home_run = v.z >= home_run_line
+    if is_home_run then
+        return ball_is_home_run
+    end
+
+    return ball_is_in_field
+end
 
 --[[
 
-case 1
+case 1 (hit evaluation)
 
 [o] case: swing and hit (should have action UI)
     [ ] define bounds for baseball
@@ -33,7 +61,7 @@ case 1
     [ ] not strike zone -> ball
 [ ] color coding of teams
 
-case 2
+case 2 (scoring)
 
 [ ] post score update
 [ ] 4 balls: walk
@@ -44,12 +72,12 @@ case 2
     [ ] if there are no innings, go to game end condition
 [ ] 9 innings: game over
 
-case 3
+case 3 (victory and game over conditions)
 
 [ ] game end condition
     [ ] side with most runs wins
 
-case 4
+case 4 (new mechanic, non-mvp)
 
 [ ] add spin to ball to allow for fouls
 
@@ -1102,9 +1130,10 @@ end
 function draw_game()
     cls(3)
 
-    print(ball1.pos.x .. ',' .. ball1.pos.y .. ',' .. ball1.pos.z, 0, 30)
-    print('z:' .. tostr(z), 0, 40)
-    print('z_line:' .. tostr(z_line),  0, 50)
+    -- print(ball1.pos.x .. ',' .. ball1.pos.y .. ',' .. ball1.pos.z, 0, 30)
+    -- print('z:' .. tostr(z), 0, 40)
+    -- print('z_line:' .. tostr(z_line),  0, 50)
+    print(in_game_bounds(ball1.pos), 0, 50)
 
     -- print(ball1.state)
     -- print(stat(1))

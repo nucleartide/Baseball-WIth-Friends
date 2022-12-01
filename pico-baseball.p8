@@ -44,6 +44,7 @@ function in_game_bounds(v)
 end
 
 assert(false, 'continue implementing hit evaluation')
+assert(false, 'todo: pan camera around the field')
 
 --[[
 

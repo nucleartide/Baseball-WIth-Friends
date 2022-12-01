@@ -25,6 +25,7 @@ function in_game_bounds(v)
     -- local behind_field_corner = (-113 * real2game) - half_diagonal
     local home_plate = -half_diagonal
     local in_front_field_corner = 389
+    -- local in_front_field_corner = 100
 
     local home_run_line = -abs(x) + in_front_field_corner
     local foul_line = v.x + home_plate
@@ -42,6 +43,8 @@ function in_game_bounds(v)
     return ball_is_in_field
 end
 
+assert(false, 'continue implementing hit evaluation')
+
 --[[
 
 done
@@ -56,9 +59,9 @@ case 1 (hit evaluation)
     [x] it is considered foul
     [x] if strike is <2, increment strike
 
-if the ball first bounces in home run territory,
-    it is considered a home run
-    increment runs
+[x] if the ball first bounces in home run territory,
+    [x] it is considered a home run
+    [x] increment runs
 
 if the ball first bounces in within the field territory,
     if the ball has just passed the home run line,
@@ -882,6 +885,9 @@ function simulate_as_rigidbody(b, fielders)
         if result == ball_is_foul then
             if num_strikes<2 then num_strikes += 1 end
             assert(false, 'ball is foul:' .. tostr(num_strikes))
+        elseif result == ball_is_home_run then
+            num_runs += 1
+            assert(false, 'ball is home run:' .. tostr(num_runs))
         end
 
         -- at this point, check for a foul
@@ -1104,7 +1110,7 @@ function init_game()
         catcher1 = fielder(catcher_pos, nil)
     end
 
-    gravity = -20
+    gravity = -40
 
     ball1 = ball(raised_pitcher_mound, ball_holding, pitcher1)
 
@@ -1154,6 +1160,9 @@ function draw_game()
     cls(3)
 
     -- print(ball1.pos.x .. ',' .. ball1.pos.y .. ',' .. ball1.pos.z, 0, 30)
+    print(ball1.pos.x, 0, 20)
+    print(ball1.pos.y, 0, 30)
+    print(ball1.pos.z, 0, 40)
     -- print('z:' .. tostr(z), 0, 40)
     -- print('z_line:' .. tostr(z_line),  0, 50)
     print(in_game_bounds(ball1.pos), 0, 50)

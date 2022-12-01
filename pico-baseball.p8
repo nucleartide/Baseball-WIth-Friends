@@ -44,17 +44,30 @@ end
 
 --[[
 
-case 1 (hit evaluation)
+done
 
 [o] case: swing and hit (should have action UI)
-    [ ] define bounds for baseball
-    [ ] add bound for baseball
-    [ ] (first) foul ball -> strike up to 2 strikes, otherwise nothing
-        [ ] check for bouncing
-        [ ] check for settling
-    [ ] (second) line drive (normal hit) -> runners progress
-    [ ] (second) timeout is reached (normal hit) -> runners progress
-    [ ] (last) home run -> run
+    [x] define bounds for baseball
+    [x] add bound for baseball
+
+case 1 (hit evaluation)
+
+[x] if the ball first bounces in foul territory,
+    [x] it is considered foul
+    [x] if strike is <2, increment strike
+
+if the ball first bounces in home run territory,
+    it is considered a home run
+    increment runs
+
+if the ball first bounces in within the field territory,
+    if the ball has just passed the home run line,
+        then if the ball is above the home run y threshold,
+            it is a ground rule double
+        else
+            make the ball bounce back, or dampen the ball's velocity significantly
+    in other cases, it is considered a fair ball
+
 [ ] case: swing and miss -> strike
 [ ] case: no swing
     [ ] strike zone -> strike
@@ -865,11 +878,17 @@ function simulate_as_rigidbody(b, fielders)
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        -- at this point, check for a foul
-        local is_foul = check_for_foul_ball(b)
-        if (is_foul) then
-            assert(false)
+        local result = in_game_bounds(b.pos)
+        if result == ball_is_foul then
+            if num_strikes<2 then num_strikes += 1 end
+            assert(false, 'ball is foul:' .. tostr(num_strikes))
         end
+
+        -- at this point, check for a foul
+        -- local is_foul = check_for_foul_ball(b)
+        -- if (is_foul) then
+            -- assert(false)
+        -- end
     end
 end
 
@@ -1092,6 +1111,10 @@ function init_game()
     fielders = {catcher1, pitcher1}
 
     batter1 = batter(-10, bases[1].z, 1, 'right')
+
+    num_strikes = 0
+    num_balls = 0
+    num_runs = 0
 end
 
 function update_game()
@@ -1134,6 +1157,9 @@ function draw_game()
     -- print('z:' .. tostr(z), 0, 40)
     -- print('z_line:' .. tostr(z_line),  0, 50)
     print(in_game_bounds(ball1.pos), 0, 50)
+    print('strikes:' .. num_strikes, 0, 60)
+    print('balls:' .. num_balls, 0, 70)
+    print('runs:' .. num_runs, 0, 80)
 
     -- print(ball1.state)
     -- print(stat(1))

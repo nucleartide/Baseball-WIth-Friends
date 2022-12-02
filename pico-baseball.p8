@@ -6,6 +6,9 @@ __lua__
 
 #include utils.p8
 
+local left_wall = vec3_normalize2(vec3(1, 0, -1))
+local right_wall = vec3_normalize2(vec3(-1, 0, -1))
+
 ball_hit_z_range = 2 -- hit if ball is within 2.5 units on the z axis.
 ball_hit_y_range = 3 -- hit if ball is within 3 units on the y axis.
 ball_catch_radius = 2 -- catch if ball is within 2.5 units.
@@ -43,9 +46,6 @@ function in_game_bounds(v)
     return ball_is_in_field
 end
 
-assert(false, 'continue implementing hit evaluation')
-assert(false, 'todo: pan camera around the field')
-
 --[[
 
 done
@@ -64,14 +64,22 @@ case 1 (hit evaluation)
     [x] it is considered a home run
     [x] increment runs
 
-if the ball first bounces in within the field territory,
-    if the ball has just passed the home run line,
-        then if the ball is above the home run y threshold,
-            it is a ground rule double
-        else
-            make the ball bounce back, or dampen the ball's velocity significantly
-    in other cases, it is considered a fair ball
+[x] add logging
+[x] assert(false, 'fix bugs first') - this is seemingly fixed
 
+[x] if the ball first bounces in within the field territory,
+    [x] set has_bounced to true.
+    [x] add a reset function to the ball.
+    [x] if the ball bounces again in home run territory,
+        [x] check if the ball is above the home run y threhsold.
+        [x] if it is,
+            [x] then log a double.
+        [ ] else
+            [ ] bounce the ball back.
+    [ ] call ball reset when throwing back
+[ ] start updating the ball-strike count
+[ ] add a timeout for the ball
+[ ] assert(false, 'todo: pan camera around the field')
 [ ] case: swing and miss -> strike
 [ ] case: no swing
     [ ] strike zone -> strike
@@ -430,7 +438,8 @@ function update_batter(b)
 
         local t = b.t / b.swing_anim_len
         local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
-        if in_range then
+        if in_range and ball1.state==ball_throwing then
+        log('ball was hit')
             handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
         elseif (b.t >= b.swing_anim_len) then
             b.t = 0
@@ -550,78 +559,9 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter, xt)
         vec3_print(direction_vector, true)
 
         -- set the ball's velocity to some arbitrary velocity for now. and test!
-        ball.vel.x = direction_vector.x * xt * 200
-        ball.vel.y = direction_vector.y * xt * 200
-        ball.vel.z = abs(direction_vector.z) * xt * 200
-end
-
-function __old_draw_batter(b)
-    --[[
-    -- determine world pos.
-    local world_pos = get_batter_worldspace(b)
-
-    -- draw player body.
-    draw_player(b, world_pos)
-
-    -- determine batter screen space.
-    local bx, by = world2screen(world_pos)
-    ]]
-
-    --
-    -- draw batter in running state.
-    --
-
-    --[[
-    if b.state==batter_running_unsafe or b.state==batter_running_safe then
-        -- determine points to draw z and x.
-        local zpos = bx - 5 - 5
-        local xpos = bx + 5
-        local y = by - 3
-
-        -- draw z.
-        print('❎', xpos, y, b.last_button_pressed==5 and 6 or 7)
-        print('🅾️', zpos, y, b.last_button_pressed==4 and 6 or 7)
-
-        return
-    end
-    ]]
-
-    --
-    -- draw batter in batting state.
-    --
-
-    -- draw bat.
-    --[[
-    if b.state==batter_batting or b.state==batter_charging then
-        -- determine whether to flip.
-        local scale = 1
-        if b.handedness == 'left' then scale *= -1 end
-
-        -- determine points of bat.
-        local high_point_x, high_point_y = bx - b.side*2*scale, by - b.h
-        local low_point_x, low_point_y = bx + b.side*2*scale, by - b.h*.5
-
-        -- actually draw bat.
-        for i=0,1 do
-            local c = 9
-            if b.t>(b.charging_anim_len*.5) then c = 8 end
-            line(high_point_x, high_point_y-i, low_point_x, low_point_y-i, c)
-        end
-    elseif b.state==batter_swinging then
-        -- determine points of bat.
-        local high_point_x, high_point_y = bx, by - b.h*.5
-
-        -- actually draw bat.
-        local ax, ay = world2screen(get_batter_aim_pos(b))
-        for i=0,1 do line(high_point_x, high_point_y-i, ax, ay-i, 9) end
-    end
-    ]]
-
-    -- draw baseball bat preview.
-    --[[
-    local ax, ay = world2screen(get_batter_aim_pos(b))
-    circ(ax, ay, 2, 6)
-    ]]
+        ball.vel.x = direction_vector.x * xt * 300
+        ball.vel.y = direction_vector.y * xt * 300
+        ball.vel.z = abs(direction_vector.z) * xt * 300
 end
 
 function compute_bat_knob_and_end_points(b)
@@ -666,7 +606,6 @@ function get_batter_bat_worldspace(b)
     return knob_pos, bat_end_pos
 end
 
--- todo: compute the rotation of the bat in update, not in draw.
 function draw_batter(b)
     -- precondition.
     assert(bases[1].x~=nil)
@@ -855,6 +794,9 @@ function ball(pos, initial_state, is_owned_by)
 
         -- populated when thrown. of type cubic_bezier.
         trajectory = nil,
+
+        -- whether a first bounce has been seen.
+        has_bounced = false,
     }
 end
 
@@ -882,13 +824,42 @@ function simulate_as_rigidbody(b, fielders)
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
+        log('ball has bounced: ' .. flr(b.pos.x) .. ',' .. flr(b.pos.y) .. ',' .. flr(b.pos.z))
+
         local result = in_game_bounds(b.pos)
-        if result == ball_is_foul then
-            if num_strikes<2 then num_strikes += 1 end
-            assert(false, 'ball is foul:' .. tostr(num_strikes))
-        elseif result == ball_is_home_run then
-            num_runs += 1
-            assert(false, 'ball is home run:' .. tostr(num_runs))
+        if not b.has_bounced then
+            if result == ball_is_foul then
+                if num_strikes<2 then num_strikes += 1 end
+                -- assert(false, 'ball is foul:' .. tostr(num_strikes))
+                log('ball is foul')
+            elseif result == ball_is_home_run then
+                num_runs += 1
+                -- assert(false, 'ball is home run:' .. tostr(num_runs))
+                log('ball is home run')
+            elseif result == ball_is_in_field then
+                log('fair ball!')
+            end
+            b.has_bounced = true
+        else
+            if result == ball_is_home_run then
+                if b.pos.y > 5 then
+                    log('ground rule double')
+                else
+                    local reflect_wall = (b.pos.x<0) and left_wall or right_wall
+
+                    -- compute the new velocity.
+                    -- reflected_vector = original vec - 2 * (v dot n) n_vec
+                    log('reflecting off wall')
+                    log('old:')
+                    log_v(b.vel)
+                    b.vel = vec3_sub(
+                        b.vel,
+                        vec3_mul2(reflect_wall, 2 * vec3_dot(b.vel, reflect_wall))
+                    )
+                    log('new:')
+                    log_v(b.vel)
+                end
+            end
         end
 
         -- at this point, check for a foul
@@ -897,6 +868,10 @@ function simulate_as_rigidbody(b, fielders)
             -- assert(false)
         -- end
     end
+end
+
+function reset_ball_state(ball1)
+    ball1.has_bounced = false
 end
 
 function check_for_foul_ball(ball1)
@@ -910,8 +885,6 @@ function check_for_foul_ball(ball1)
     local x = ball1.pos.x
     local b = -half_diagonal
     z_line = m * x + b
-    -- printh('z:' .. z)
-    -- printh('z_line:' .. z_line)
     return z < z_line -- foul lines are still fair
 end
 
@@ -954,10 +927,12 @@ function pick_up_ball_if_nearby(b, fielders)
         if d<ball_catch_radius then
             b.state = ball_holding
             b.is_owned_by = f
+            log('ball was picked up')
 
             if f~=pitcher1 then
                 -- after 1s, catcher throws the ball back.
                 delay(function()
+                    log('ball is returned')
                     b.is_owned_by = nil
                     return_ball_to_pitcher(b, f, pitcher1)
                 end, 60)
@@ -967,23 +942,6 @@ function pick_up_ball_if_nearby(b, fielders)
 end
 
 function animate_thrown_ball(b)
-    -- handle dropped balls.
-    --[[
-    if b.pos.y<=0 then
-        b.state = ball_idle_physical_obj
-
-        --   x and z are determined by trajectory[1] and trajectory[4]
-        vec3_set(b.vel, b.trajectory[4])
-        vec3_sub_from(b.vel, b.trajectory[1])
-        local old_d = vec3_normalize(b.vel)
-        vec3_mul(b.vel, old_d * .1)
-
-        -- initially:
-        -- set velocity
-        b.vel.y = 5
-    end
-    ]]
-
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
@@ -991,6 +949,7 @@ function animate_thrown_ball(b)
     -- if the ball has been thrown, then
     if t>.2 then
         -- check whether any fielders are around to catch.
+        -- can filter out by is_owned_by
         assert(fielders~=nil)
         pick_up_ball_if_nearby(b, fielders)
     end
@@ -1111,7 +1070,7 @@ function init_game()
         catcher1 = fielder(catcher_pos, nil)
     end
 
-    gravity = -40
+    gravity = -50
 
     ball1 = ball(raised_pitcher_mound, ball_holding, pitcher1)
 
@@ -1133,21 +1092,20 @@ function update_game()
     btnr_update()
 
     --
-    -- game logic.
+    -- update entities.
     --
 
     update_fielder(pitcher1)
     update_batter(batter1)
 
     --
-    -- ball updates.
+    -- update the ball.
     --
 
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1)
     elseif ball1.state == ball_idle_physical_obj then
         simulate_as_rigidbody(ball1)
-        -- check_for_foul_ball(ball1)
     end
 
     --
@@ -1157,25 +1115,50 @@ function update_game()
     count_down_timers()
 end
 
+log_y = 10
+log_messages = {}
+
+function log(msg)
+    add(log_messages, msg)
+    if #log_messages>5 then deli(log_messages, 1) end
+end
+
+function log_v(v)
+    log(flr(v.x) .. ',' .. flr(v.y) .. ',' .. flr(v.z))
+end
+
+function draw_log()
+    local init = log_y
+    for i,msg in ipairs(log_messages) do
+        print(msg, 0, init)
+        init += 10
+    end
+end
+
+fixed_y = 10
+
+function fixed(msg)
+    -- print(msg, 0, fixed_y)
+    fixed_y += 10
+end
+
+function fixed_reset()
+    fixed_y = 10
+end
+
 function draw_game()
     cls(3)
 
-    -- print(ball1.pos.x .. ',' .. ball1.pos.y .. ',' .. ball1.pos.z, 0, 30)
-    print(ball1.pos.x, 0, 20)
-    print(ball1.pos.y, 0, 30)
-    print(ball1.pos.z, 0, 40)
-    -- print('z:' .. tostr(z), 0, 40)
-    -- print('z_line:' .. tostr(z_line),  0, 50)
-    print(in_game_bounds(ball1.pos), 0, 50)
-    print('strikes:' .. num_strikes, 0, 60)
-    print('balls:' .. num_balls, 0, 70)
-    print('runs:' .. num_runs, 0, 80)
+    fixed(ball1.pos.x)
+    fixed(ball1.pos.y)
+    fixed(ball1.pos.z)
+    fixed(in_game_bounds(ball1.pos))
+    fixed('strikes:' .. num_strikes)
+    fixed('balls:' .. num_balls)
+    fixed('runs:' .. num_runs)
+    fixed_reset()
 
-    -- print(ball1.state)
-    -- print(stat(1))
-    -- print(fielders[1].pos.z)
-    -- print(batter1.pos.z)
-    -- print(ball1.is_owned_by)
+    draw_log()
 
     -- draw sand around home plate.
     do
@@ -1240,12 +1223,10 @@ function draw_game()
     print('⬇️4', 117, 0)
     circfill(119, 8, 2, 1)
     circfill(125, 8, 2, 1)
-
     local x_offset = 0
     local y_offset = 3
     rectfill(88, 108+y_offset, 117, 116+y_offset, 0)
     print('strike!', 90, 110+y_offset, 7)
-
     print('2-2', 64-ceil(3*4*.5)+1, 0, 7)
 end
 

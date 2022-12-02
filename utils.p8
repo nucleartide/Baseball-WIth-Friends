@@ -2,6 +2,8 @@ pico-8 cartridge // http://www.pico-8.com
 version 38
 __lua__
 
+assert(false, 'home run wall bounce are funky')
+
 --
 -- ## vec3 operations.
 --
@@ -84,7 +86,7 @@ function vec3_mul(v1, c)
 end
 
 function vec3_mul2(v1, c)
-	local v2 = vec3_set(vec(), v1)
+	local v2 = vec3_set(vec3(), v1)
 	v2.x *= c
 	v2.y *= c
 	v2.z *= c

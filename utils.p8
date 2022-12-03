@@ -2,8 +2,6 @@ pico-8 cartridge // http://www.pico-8.com
 version 38
 __lua__
 
-assert(false, 'home run wall bounce are funky')
-
 --
 -- ## vec3 operations.
 --

@@ -74,8 +74,8 @@ case 1 (hit evaluation)
         [x] check if the ball is above the home run y threhsold.
         [x] if it is,
             [x] then log a double.
-        [ ] else
-            [ ] bounce the ball back.
+        [x] else
+            [x] bounce the ball back.
     [ ] call ball reset when throwing back
 [ ] start updating the ball-strike count
 [ ] add a timeout for the ball
@@ -849,15 +849,21 @@ function simulate_as_rigidbody(b, fielders)
 
                     -- compute the new velocity.
                     -- reflected_vector = original vec - 2 * (v dot n) n_vec
-                    log('reflecting off wall')
-                    log('old:')
-                    log_v(b.vel)
+                    -- log('reflecting off wall')
+                    -- log('old:')
+                    -- log_v(b.vel)
+                    --[[
+                    b.pos.z -= 10
                     b.vel = vec3_sub(
                         b.vel,
                         vec3_mul2(reflect_wall, 2 * vec3_dot(b.vel, reflect_wall))
                     )
-                    log('new:')
-                    log_v(b.vel)
+                    ]]
+                    -- log('new:')
+                    -- log_v(b.vel)
+                    log('zeroing out velocity because of hitting the wall')
+                    b.vel.x = 0
+                    b.vel.z = 0
                 end
             end
         end

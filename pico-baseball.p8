@@ -6,6 +6,8 @@ __lua__
 
 #include utils.p8
 
+assert(false, 'start updating the ball-strike count.')
+
 local left_wall = vec3_normalize2(vec3(1, 0, -1))
 local right_wall = vec3_normalize2(vec3(-1, 0, -1))
 
@@ -76,7 +78,7 @@ case 1 (hit evaluation)
             [x] then log a double.
         [x] else
             [x] bounce the ball back.
-    [ ] call ball reset when throwing back
+    [x] call ball reset when throwing back
 [ ] start updating the ball-strike count
 [ ] add a timeout for the ball
 [ ] assert(false, 'todo: pan camera around the field')
@@ -877,6 +879,7 @@ function simulate_as_rigidbody(b, fielders)
 end
 
 function reset_ball_state(ball1)
+    log('resetting ball state.')
     ball1.has_bounced = false
 end
 
@@ -909,6 +912,9 @@ end
 function return_ball_to_pitcher(b, fielder, pitcher)
     local start = get_fielder_midpoint(fielder)
     local _end = get_fielder_midpoint(pitcher)
+
+    -- reset ball state.
+    reset_ball_state(b)
 
     -- set trajectory.
     b.trajectory = cubic_bezier(

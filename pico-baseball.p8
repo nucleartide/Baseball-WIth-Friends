@@ -6,6 +6,7 @@ __lua__
 
 #include utils.p8
 
+assert(false, 'review game design outline in notion')
 assert(false, 'start updating the ball-strike count.')
 
 local left_wall = vec3_normalize2(vec3(1, 0, -1))

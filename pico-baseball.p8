@@ -851,9 +851,25 @@ function pick_up_ball_if_nearby(b, fielders)
         if d<ball_catch_radius then
             b.state = ball_holding
             b.is_owned_by = f
-            log('ball was picked up')
 
-            if f~=pitcher1 then
+            if f==catcher1 then
+                log('ball was caught')
+
+                -- x should be -2.5 to 2.5 for strike.
+                -- y should be 2.5 to 7.5 for strike.
+                local half_strike_zone = 2.5
+                local xl, xr = -half_strike_zone, half_strike_zone
+                local yb, yt = 5 - half_strike_zone, 5 + half_strike_zone
+                local x = b.pos.x
+                local y = b.pos.y
+                if xl<=x and x<=xr and yb<=y and y<=yt then
+                    log('strrrrrike!')
+                    num_strikes += 1
+                else
+                    log('ball!')
+                    num_balls += 1
+                end
+
                 -- after 1s, catcher throws the ball back.
                 delay(function()
                     log('ball is returned')

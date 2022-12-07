@@ -6,7 +6,8 @@ __lua__
 
 #include utils.p8
 
-assert(false, 'strikekeeping seems a little buggy, please fix first.')
+assert(false, 'strikekeeping seems a little buggy, please fix bugs first.')
+assert(false, 'likely a state related issue, review code to see where state is hiding')
 assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 
 local left_wall = vec3_normalize2(vec3(1, 0, -1))

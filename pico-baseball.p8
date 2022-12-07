@@ -6,8 +6,8 @@ __lua__
 
 #include utils.p8
 
-assert(false, 'review game design outline in notion')
-assert(false, 'start updating the ball-strike count.')
+-- assert(false, 'review game design outline in notion')
+-- assert(false, 'start updating the ball-strike count.')
 
 local left_wall = vec3_normalize2(vec3(1, 0, -1))
 local right_wall = vec3_normalize2(vec3(-1, 0, -1))
@@ -741,6 +741,7 @@ function ball(pos, initial_state, is_owned_by)
         trajectory = nil,
 
         -- whether a first bounce has been seen.
+        -- reset upon returning the ball to the pitcher.
         has_bounced = false,
     }
 end
@@ -1173,6 +1174,7 @@ function draw_game()
     end
 
     -- draw the ui.
+--[[
     print('dad 0', 0, 0)
     print('jes 2', 0, 6)
     print('⬇️4', 117, 0)
@@ -1182,7 +1184,17 @@ function draw_game()
     local y_offset = 3
     rectfill(88, 108+y_offset, 117, 116+y_offset, 0)
     print('strike!', 90, 110+y_offset, 7)
-    print('2-2', 64-ceil(3*4*.5)+1, 0, 7)
+]]
+    -- print('2-2', 64-ceil(3*4*.5)+1, 0, 7)
+    -- num_strikes = 0
+    -- num_balls = 0
+    cprint(num_balls .. '-' .. num_strikes, 1, 7)
+end
+
+function cprint(msg, y, c)
+    local half_width = #msg * 2 -- 4 pixels per character, but halved.
+    local x = 64 - half_width
+    print(msg, x, y, c)
 end
 
 -->8

@@ -262,6 +262,7 @@ batter_charging = 1
 batter_swinging = 2
 batter_running_unsafe = 3
 batter_running_safe = 4
+batter_swinging_ball_was_hit = 5
 
 -- goal for today: get this bat drawn and animated.
 function batter(x, z, player_num, handedness)
@@ -378,15 +379,24 @@ function update_batter(b)
     end
 
     -- if player is swinging,
-    if b.state==batter_swinging then
+    if b.state==batter_swinging or b.state==batter_swinging_ball_was_hit then
+        -- update the swing timer.
         b.t += 1
 
+        -- check whether the bat is in "hit" range.
         local t = b.t / b.swing_anim_len
         local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
-        if in_range and ball1.state==ball_throwing then
-        log('ball was hit')
+
+        if in_range and ball1.state == ball_throwing then
             handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
-        elseif (b.t >= b.swing_anim_len) then
+        elseif b.t >= b.swing_anim_len then
+            -- if ball was not hit, increment strikes.
+            if b.state==batter_swinging then
+                log('strike!')
+                num_strikes += 1
+            end
+
+            -- swing is done, reset the bat's swinging state.
             b.t = 0
             b.state = batter_batting
         end
@@ -394,34 +404,6 @@ function update_batter(b)
 
     -- compute the bat knob and bat end locatinos.
     compute_bat_knob_and_end_points(b)
-
-    --[[
-    -- if player is batting,
-    if b.state==batter_batting then
-        if btn(0, b.player_num) then
-            b.rel_to_home_plate_pos.x -= .1
-        end
-        if btn(1, b.player_num) then
-            b.rel_to_home_plate_pos.x += .1
-        end
-        if btn(2, b.player_num) then
-            b.bat_aim_vec.y+=.5
-        end
-        if btn(3, b.player_num) then
-            b.bat_aim_vec.y-=.5
-        end
-    end
-
-    if b.state==batter_running_unsafe then
-        if b.last_button_pressed~=4 and btnp(4, b.player_num) then
-            b.t += .01
-            b.last_button_pressed = 4
-        elseif b.last_button_pressed~=5 and btnp(5, b.player_num) then
-            b.t += .01
-            b.last_button_pressed = 5
-        end
-    end
-    ]]
 end
 
 function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
@@ -468,8 +450,11 @@ function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
 end
 
 function handle_ball_hit(bat_knob, bat_end, ball, batter, xt)
+    log('ball was hit')
     assert(ball~=nil)
     assert(batter~=nil)
+    batter.state = batter_swinging_ball_was_hit
+
     local ball_pos = ball.pos
 
         -- set state of ball.
@@ -504,9 +489,9 @@ function handle_ball_hit(bat_knob, bat_end, ball, batter, xt)
         vec3_print(direction_vector, true)
 
         -- set the ball's velocity to some arbitrary velocity for now. and test!
-        ball.vel.x = direction_vector.x * xt * 300
-        ball.vel.y = direction_vector.y * xt * 300
-        ball.vel.z = abs(direction_vector.z) * xt * 300
+        ball.vel.x = direction_vector.x * xt * 200
+        ball.vel.y = direction_vector.y * xt * 200
+        ball.vel.z = abs(direction_vector.z) * xt * 200
 end
 
 function compute_bat_knob_and_end_points(b)
@@ -747,20 +732,23 @@ function ball(pos, initial_state, is_owned_by)
 end
 
 function simulate_as_rigidbody(b, fielders)
-    -- assert(fielders~=nil)
+    -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
-    -- update vel.
+    -- update velocity.
     vec3_add_to(b.vel, b.acc)
     if (b.vel.y<gravity) b.vel.y=gravity -- clamp velocity to bound.
 
-    -- update pos.
+    -- update position.
     vec3_set(spare1, b.vel)
     vec3_mul(spare1, 1/60)
     vec3_add_to(b.pos, spare1)
 
-    -- constrain pos.
+    -- handle bounces.
     if (b.pos.y<0) then
+        log('ball has bounced: ' .. flr(b.pos.x) .. ',' .. flr(b.pos.y) .. ',' .. flr(b.pos.z))
+
+        -- constrain.
         b.pos.y=0
 
         -- add bounce velocity in the reverse direction.
@@ -770,55 +758,35 @@ function simulate_as_rigidbody(b, fielders)
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        log('ball has bounced: ' .. flr(b.pos.x) .. ',' .. flr(b.pos.y) .. ',' .. flr(b.pos.z))
+        evaluate_bounce(b)
+    end
+end
 
-        local result = in_game_bounds(b.pos)
-        if not b.has_bounced then
-            if result == ball_is_foul then
-                if num_strikes<2 then num_strikes += 1 end
-                -- assert(false, 'ball is foul:' .. tostr(num_strikes))
-                log('ball is foul')
-            elseif result == ball_is_home_run then
-                num_runs += 1
-                -- assert(false, 'ball is home run:' .. tostr(num_runs))
-                log('ball is home run')
-            elseif result == ball_is_in_field then
-                log('fair ball!')
+home_run_y_threshold = 5
+
+-- todo: how do i reset the ball?
+function evaluate_bounce(ball)
+    local result = in_game_bounds(ball.pos)
+    if not ball.has_bounced then
+        if result == ball_is_foul then
+            if num_strikes < 2 then
+                log('strike!') assert(false)
+                num_strikes += 1
             end
-            b.has_bounced = true
-        else
-            if result == ball_is_home_run then
-                if b.pos.y > 5 then
-                    log('ground rule double')
-                else
-                    local reflect_wall = (b.pos.x<0) and left_wall or right_wall
-
-                    -- compute the new velocity.
-                    -- reflected_vector = original vec - 2 * (v dot n) n_vec
-                    -- log('reflecting off wall')
-                    -- log('old:')
-                    -- log_v(b.vel)
-                    --[[
-                    b.pos.z -= 10
-                    b.vel = vec3_sub(
-                        b.vel,
-                        vec3_mul2(reflect_wall, 2 * vec3_dot(b.vel, reflect_wall))
-                    )
-                    ]]
-                    -- log('new:')
-                    -- log_v(b.vel)
-                    log('zeroing out velocity because of hitting the wall')
-                    b.vel.x = 0
-                    b.vel.z = 0
-                end
+        elseif result == ball_is_home_run then
+            log('home run!') assert(false)
+            num_runs += 1
+        end
+    else
+        if result == ball_is_home_run then
+            if ball.pos.y > home_run_y_threshold then
+                log('ground rule double') assert(false)
+            else
+                ball.vel.x = 0
+                ball.vel.y = 0
+                ball.vel.z = 0
             end
         end
-
-        -- at this point, check for a foul
-        -- local is_foul = check_for_foul_ball(b)
-        -- if (is_foul) then
-            -- assert(false)
-        -- end
     end
 end
 
@@ -1189,6 +1157,7 @@ function draw_game()
     -- num_strikes = 0
     -- num_balls = 0
     cprint(num_balls .. '-' .. num_strikes, 1, 7)
+    print(num_runs, 1, 1, 7)
 end
 
 function cprint(msg, y, c)

@@ -6,8 +6,8 @@ __lua__
 
 #include utils.p8
 
--- assert(false, 'review game design outline in notion')
--- assert(false, 'start updating the ball-strike count.')
+assert(false, 'strikekeeping seems a little buggy, please fix first.')
+assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 
 local left_wall = vec3_normalize2(vec3(1, 0, -1))
 local right_wall = vec3_normalize2(vec3(-1, 0, -1))
@@ -302,18 +302,8 @@ function batter(x, z, player_num, handedness)
         charging_anim_len = 10, -- cycle every 10 frames.
         swing_anim_len = .25*60, -- half a second.
 
-        -- relative to get_batter_half_body_worldspace.
-        -- bat_aim_vec = vec3(bat_aim_x, 0, 0),
-
-        --
-        -- run fields.
-        --
-
-        -- 4 or 5, indicating whether z or x was last pressed while running.
-        -- last_button_pressed = nil,
-
-        -- current base that the batter is on. [1,4].
-        -- current_base = 1,
+        -- whether the batter has swung the bat.
+        did_swing = false,
     })
 end
 
@@ -343,7 +333,7 @@ function update_batter(b)
     end
 
     -- hold x to charge.
-    if b.state==batter_batting and btnp(4, b.player_num) then
+    if b.state==batter_batting and btnp(4, b.player_num) and not b.did_swing then
         b.state = batter_charging
         return
     end
@@ -375,6 +365,7 @@ function update_batter(b)
     if b.state==batter_charging and btnr(4, b.player_num) then
         b.state = batter_swinging
         b.t = 0
+        b.did_swing = true -- check to ensure batter doesn't swing again.
         return
     end
 
@@ -390,10 +381,16 @@ function update_batter(b)
         if in_range and ball1.state == ball_throwing then
             handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
         elseif b.t >= b.swing_anim_len then
-            -- if ball was not hit, increment strikes.
-            if b.state==batter_swinging then
+            -- if ball was not hit,
+            -- and the ball was thrown,
+            -- increment strikes.
+            if b.state==batter_swinging and ball1.state == ball_throwing then
                 log('strike!')
                 num_strikes += 1
+            end
+
+            if ball1.state != ball_throwing then
+                b.did_swing = false
             end
 
             -- swing is done, reset the bat's swinging state.
@@ -677,23 +674,6 @@ end
 
 function pitcher_draw(p)
     local sx, sy = draw_player(p)
-
-    --[[ -- may need this.
-    if p.state==pitcher_selecting_endpoint then
-        -- draw strike box.
-        do
-            local sx, sy = world2screen(p.dest.pos)
-            local height = 10
-            local half_width = 4
-            local y_offset = 1
-            rect(sx-half_width, sy-height+1+y_offset, sx+half_width, sy+y_offset, 6)
-        end
-
-        -- draw the reticle for the fielder being thrown to.
-        local sx, sy = world2screen(worldspace(p.dest.pos, p.reticle))
-        circ(sx, sy, 2, c)
-    end
-    ]]
 end
 
 -->8
@@ -702,6 +682,7 @@ end
 ball_holding = 0
 ball_throwing = 1
 ball_idle_physical_obj = 2
+ball_returning = 3 -- ball is in the process of being returned to the catcher.
 
 function ball(pos, initial_state, is_owned_by)
     assert(is_owned_by~=nil)
@@ -764,27 +745,50 @@ end
 
 home_run_y_threshold = 5
 
--- todo: how do i reset the ball?
 function evaluate_bounce(ball)
     local result = in_game_bounds(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
             if num_strikes < 2 then
-                log('strike!') assert(false)
+                log('strike!')
                 num_strikes += 1
             end
+            catcher_has_new_ball(ball)
+            return
         elseif result == ball_is_home_run then
-            log('home run!') assert(false)
+            log('home run!')
             num_runs += 1
+            catcher_has_new_ball(ball)
+            return
         end
+        ball.has_bounced = true
     else
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
                 log('ground rule double') assert(false)
+                catcher_has_new_ball(ball)
+                return
             else
+                -- hit the endfield walls. zero out velocity.
                 ball.vel.x = 0
                 ball.vel.y = 0
                 ball.vel.z = 0
+
+                -- return ball after 1s.
+                delay(function()
+                    catcher_has_new_ball(ball)
+                end, 60)
+            end
+        elseif ball.state != ball_returning then
+            local len = length(ball.vel)
+            if len < 1 then
+                -- update the ball state.
+                ball.state = ball_returning
+
+                -- the ball has settled. return the ball to the catcher.
+                delay(function()
+                    catcher_has_new_ball(ball)
+                end, 60)
             end
         end
     end
@@ -828,6 +832,9 @@ function return_ball_to_pitcher(b, fielder, pitcher)
     -- reset ball state.
     reset_ball_state(b)
 
+    -- reset batter state.
+    active_batter.did_swing = false
+
     -- set trajectory.
     b.trajectory = cubic_bezier(
         start,
@@ -844,6 +851,23 @@ function return_ball_to_pitcher(b, fielder, pitcher)
     b.state = ball_throwing
 end
 
+function evaluate_ball_strike_zone(b)
+    -- x should be -2.5 to 2.5 for strike.
+    -- y should be 2.5 to 7.5 for strike.
+    local half_strike_zone = 2.5
+    local xl, xr = -half_strike_zone, half_strike_zone
+    local yb, yt = 5 - half_strike_zone, 5 + half_strike_zone
+    local x = b.pos.x
+    local y = b.pos.y
+    if xl<=x and x<=xr and yb<=y and y<=yt then
+        log('strrrrrike!')
+        num_strikes += 1
+    else
+        log('ball!')
+        num_balls += 1
+    end
+end
+
 function pick_up_ball_if_nearby(b, fielders)
     assert(#fielders>0)
     for f in all(fielders) do
@@ -855,19 +879,8 @@ function pick_up_ball_if_nearby(b, fielders)
             if f==catcher1 then
                 log('ball was caught')
 
-                -- x should be -2.5 to 2.5 for strike.
-                -- y should be 2.5 to 7.5 for strike.
-                local half_strike_zone = 2.5
-                local xl, xr = -half_strike_zone, half_strike_zone
-                local yb, yt = 5 - half_strike_zone, 5 + half_strike_zone
-                local x = b.pos.x
-                local y = b.pos.y
-                if xl<=x and x<=xr and yb<=y and y<=yt then
-                    log('strrrrrike!')
-                    num_strikes += 1
-                else
-                    log('ball!')
-                    num_balls += 1
+                if not active_batter.did_swing then
+                    evaluate_ball_strike_zone(b)
                 end
 
                 -- after 1s, catcher throws the ball back.
@@ -879,6 +892,17 @@ function pick_up_ball_if_nearby(b, fielders)
             end
         end
     end
+end
+
+function catcher_has_new_ball(ball)
+    ball.state = ball_holding
+    ball.is_owned_by = catcher1
+
+    delay(function()
+        log('ball is returned')
+        ball.is_owned_by = nil
+        return_ball_to_pitcher(ball, catcher1, pitcher1)
+    end, 60)
 end
 
 function animate_thrown_ball(b)
@@ -1021,6 +1045,8 @@ function init_game()
     num_strikes = 0
     num_balls = 0
     num_runs = 0
+
+    active_batter = batter1
 end
 
 function update_game()

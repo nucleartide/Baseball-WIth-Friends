@@ -9,13 +9,12 @@ __lua__
 #include entities.lua
 #include game_state.lua
 
---[[
 assert(false, 'strikekeeping seems a little buggy, please fix bugs first.')
 assert(false, 'likely a state related issue, review code to see where state is hiding')
 assert(false, 'how to be more stateless')
 assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 assert(false, 'state is needed, but you can limit the scope of state')
-]]
+assert(false, 'continue thinking how to isolate the amount of state that you need to worry about in any part of your program')
 
 _init = init_game
 

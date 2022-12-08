@@ -15,6 +15,7 @@ assert(false, 'how to be more stateless')
 assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 assert(false, 'state is needed, but you can limit the scope of state')
 assert(false, 'continue thinking how to isolate the amount of state that you need to worry about in any part of your program')
+assert(false, 'get rid of vec3 mutation')
 
 _init = init_game
 

@@ -1,4 +1,22 @@
 
+do -- Start game state scope.
+
+local bases -- 15 tokens to get rid of global state. i'll take it.
+    , pitchers_mound
+    , batters_box
+    , catchers_box
+    , raised_pitcher_mound
+    , raised_home_plate
+    , pitcher1
+    , catcher1
+    , ball1
+    , fielders
+    , batter1
+    , num_strikes
+    , num_balls
+    , num_runs
+    , active_batter
+
 function init_game()
     bases = {
         vec3(0, 0, -half_diagonal), -- home
@@ -59,13 +77,14 @@ function init_game()
 end
 
 function update_game()
-    update_fielder(pitcher1)
-    update_batter(batter1)
+    update_fielder(pitcher1, ball1)
+    update_batter(batter1, ball1, bases)
 
     if ball1.state == ball_throwing then
-        animate_thrown_ball(ball1)
+        animate_thrown_ball(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_idle_physical_obj then
-        simulate_as_rigidbody(ball1)
+        assert(active_batter)
+        simulate_as_rigidbody(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then
@@ -136,7 +155,7 @@ function draw_game()
         {ball1.pos, ball1, draw_ball},
         {shadow_pos, nil, function() draw_ball(ball1, true) end},
         {catcher1.pos, catcher1, draw_player},
-        {batter1.pos, batter1, draw_batter},
+        {batter1.pos, batter1, function() draw_batter(batter1, bases) end},
     })
 
     -- draw sorted entities.
@@ -164,3 +183,5 @@ function draw_game()
     cprint(num_balls .. '-' .. num_strikes, 1, 7)
     print(num_runs, 1, 1, 7)
 end
+
+end -- End game state scope.

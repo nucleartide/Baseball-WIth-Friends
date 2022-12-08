@@ -17,3 +17,17 @@ ball_is_home_run = 'home run'
 ball_is_in_field = 'in field'
 
 gravity = -50
+
+home_run_y_threshold = 5
+
+ball_holding = 0
+ball_throwing = 1
+ball_idle_physical_obj = 2
+ball_returning = 3 -- the ball has been caught by the catcher, and is awaiting return to the pitcher.
+
+batter_batting = 0
+batter_charging = 1
+batter_swinging = 2
+batter_running_unsafe = 3
+batter_running_safe = 4
+batter_swinging_ball_was_hit = 5

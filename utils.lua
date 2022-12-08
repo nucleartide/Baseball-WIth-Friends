@@ -622,3 +622,26 @@ end
 function fixed_reset()
     fixed_y = 10
 end
+
+function in_game_bounds(v)
+    -- z values.
+    -- local behind_field_corner = (-113 * real2game) - half_diagonal
+    local home_plate = -half_diagonal
+    local in_front_field_corner = 389
+    -- local in_front_field_corner = 100
+
+    local home_run_line = -abs(x) + in_front_field_corner
+    local foul_line = v.x + home_plate
+
+    local is_foul = v.z < foul_line
+    if is_foul then
+        return ball_is_foul
+    end
+
+    local is_home_run = v.z >= home_run_line
+    if is_home_run then
+        return ball_is_home_run
+    end
+
+    return ball_is_in_field
+end

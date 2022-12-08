@@ -1,33 +1,6 @@
 
-function in_game_bounds(v)
-    -- z values.
-    -- local behind_field_corner = (-113 * real2game) - half_diagonal
-    local home_plate = -half_diagonal
-    local in_front_field_corner = 389
-    -- local in_front_field_corner = 100
-
-    local home_run_line = -abs(x) + in_front_field_corner
-    local foul_line = v.x + home_plate
-
-    local is_foul = v.z < foul_line
-    if is_foul then
-        return ball_is_foul
-    end
-
-    local is_home_run = v.z >= home_run_line
-    if is_home_run then
-        return ball_is_home_run
-    end
-
-    return ball_is_in_field
-end
-
---[[
-
-]]
-
 -->8
--- static objects.
+-- environment.
 
 function draw_base(v, r, c)
     local sx, sy = world2screen(v)
@@ -208,7 +181,7 @@ function update_pitcher_selecting_endpoint(f, on_throw)
     end
 end
 
-function update_fielder(f)
+function update_fielder(f, ball1)
     if f.player_num==nil then
         return
     end
@@ -229,13 +202,6 @@ end
 
 -->8
 -- batter.
-
-batter_batting = 0
-batter_charging = 1
-batter_swinging = 2
-batter_running_unsafe = 3
-batter_running_safe = 4
-batter_swinging_ball_was_hit = 5
 
 -- goal for today: get this bat drawn and animated.
 function batter(x, z, player_num, handedness)
@@ -285,22 +251,7 @@ function get_batter_worldspace(b, home_plate_pos)
     return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
---[[
-function get_batter_half_body_worldspace(b)
-    local pos = get_batter_worldspace(b)
-    pos.y = b.h/2
-    return pos
-end
-
-function get_batter_aim_pos(b)
-    return worldspace(
-        get_batter_half_body_worldspace(b),
-        b.bat_aim_vec
-    )
-end
-]]
-
-function update_batter(b)
+function update_batter(b, ball1, bases)
     if b.player_num==nil then
         return
     end
@@ -349,10 +300,10 @@ function update_batter(b)
 
         -- check whether the bat is in "hit" range.
         local t = b.t / b.swing_anim_len
-        local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
+        local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
 
         if in_range and ball1.state == ball_throwing then
-            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t)
+            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
         elseif b.t >= b.swing_anim_len then
             -- if ball was not hit,
             -- and the ball was thrown,
@@ -376,12 +327,12 @@ function update_batter(b)
     compute_bat_knob_and_end_points(b)
 end
 
-function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
+function in_swing_range(bat_knob, bat_end, ball, batter, swing_t, bases)
     assert(ball~=nil)
     assert(batter~=nil)
     assert(swing_t~=nil)
 
-    bat_knob, bat_end = get_batter_bat_worldspace(batter)
+    bat_knob, bat_end = get_batter_bat_worldspace(batter, bases)
 
     -- find the t value of the ball in the x-axis.
     local ball_pos = ball.pos
@@ -419,7 +370,7 @@ function in_swing_range(bat_knob, bat_end, ball, batter, swing_t)
     return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range, xt
 end
 
-function handle_ball_hit(bat_knob, bat_end, ball, batter, xt)
+function handle_ball_hit(bat_knob, bat_end, ball, batter, xt, bases)
     log('ball was hit')
     assert(ball~=nil)
     assert(batter~=nil)
@@ -498,7 +449,7 @@ function compute_bat_knob_and_end_points(b)
     end
 end
 
-function get_batter_bat_worldspace(b)
+function get_batter_bat_worldspace(b, bases)
     local world_pos = get_batter_worldspace(b, bases[1])
     local pivot_pos = worldspace(world_pos, b.pivot)
     local knob_pos = worldspace(pivot_pos, b.rotated_knob)
@@ -506,7 +457,7 @@ function get_batter_bat_worldspace(b)
     return knob_pos, bat_end_pos
 end
 
-function draw_batter(b)
+function draw_batter(b, bases)
     -- precondition.
     assert(bases[1].x~=nil)
 
@@ -514,7 +465,7 @@ function draw_batter(b)
     draw_player(b, get_batter_worldspace(b, bases[1]))
 
     -- determine the pivot around which the bat swings.
-    local knob_pos, bat_end_pos = get_batter_bat_worldspace(b)
+    local knob_pos, bat_end_pos = get_batter_bat_worldspace(b, bases)
 
     -- draw the player's bat.
     local sx1, sy1 = world2screen(knob_pos)
@@ -652,11 +603,6 @@ end
 -->8
 -- ball.
 
-ball_holding = 0
-ball_throwing = 1
-ball_idle_physical_obj = 2
-ball_returning = 3 -- the ball has been caught by the catcher, and is awaiting return to the pitcher.
-
 function ball(pos, initial_state, is_owned_by)
     assert(is_owned_by~=nil)
     return {
@@ -685,7 +631,7 @@ function ball(pos, initial_state, is_owned_by)
     }
 end
 
-function simulate_as_rigidbody(b, fielders)
+function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter)
     -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
@@ -712,13 +658,12 @@ function simulate_as_rigidbody(b, fielders)
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        evaluate_bounce(b)
+        evaluate_bounce(b, catcher1, pitcher1, active_batter)
     end
 end
 
-home_run_y_threshold = 5
-
-function evaluate_bounce(ball)
+function evaluate_bounce(ball, catcher1, pitcher1, active_batter)
+    assert(active_batter!=nil)
     local result = in_game_bounds(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
@@ -726,12 +671,12 @@ function evaluate_bounce(ball)
                 log('strike!')
                 num_strikes += 1
             end
-            catcher_has_new_ball(ball)
+            catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
             return
         elseif result == ball_is_home_run then
             log('home run!')
             num_runs += 1
-            catcher_has_new_ball(ball)
+            catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
             return
         end
         ball.has_bounced = true
@@ -739,7 +684,7 @@ function evaluate_bounce(ball)
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
                 log('ground rule double') assert(false)
-                catcher_has_new_ball(ball)
+                catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
                 return
             else
                 -- hit the endfield walls. zero out velocity.
@@ -749,7 +694,7 @@ function evaluate_bounce(ball)
 
                 -- return ball after 1s.
                 delay(function()
-                    catcher_has_new_ball(ball)
+                    catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
                 end, 60)
             end
         elseif ball.state != ball_returning then
@@ -760,7 +705,7 @@ function evaluate_bounce(ball)
 
                 -- the ball has settled. return the ball to the catcher.
                 delay(function()
-                    catcher_has_new_ball(ball)
+                    catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
                 end, 60)
             end
         end
@@ -798,7 +743,9 @@ function throw_ball(b, trajectory)
     b.state = ball_throwing
 end
 
-function return_ball_to_pitcher(b, fielder, pitcher)
+function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
+    assert(fielder != nil)
+    assert(pitcher != nil)
     local start = get_fielder_midpoint(fielder)
     local _end = get_fielder_midpoint(pitcher)
 
@@ -841,7 +788,7 @@ function evaluate_ball_strike_zone(b)
     end
 end
 
-function pick_up_ball_if_nearby(b, fielders)
+function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
     assert(#fielders>0)
     for f in all(fielders) do
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
@@ -860,25 +807,27 @@ function pick_up_ball_if_nearby(b, fielders)
                 delay(function()
                     log('ball is returned')
                     b.is_owned_by = nil
-                    return_ball_to_pitcher(b, f, pitcher1)
+                    assert(active_batter!=nil)
+                    return_ball_to_pitcher(b, f, pitcher1, active_batter)
                 end, 60)
             end
         end
     end
 end
 
-function catcher_has_new_ball(ball)
+function catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
     ball.state = ball_holding
     ball.is_owned_by = catcher1
 
     delay(function()
         log('ball is returned')
         ball.is_owned_by = nil
-        return_ball_to_pitcher(ball, catcher1, pitcher1)
+                    assert(active_batter!=nil)
+        return_ball_to_pitcher(ball, catcher1, pitcher1, active_batter)
     end, 60)
 end
 
-function animate_thrown_ball(b)
+function animate_thrown_ball(b, fielders, catcher1, pitcher1, active_batter)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
@@ -888,7 +837,7 @@ function animate_thrown_ball(b)
         -- check whether any fielders are around to catch.
         -- can filter out by is_owned_by
         assert(fielders~=nil)
-        pick_up_ball_if_nearby(b, fielders)
+        pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
     end
 
     -- increment timer for next frame.

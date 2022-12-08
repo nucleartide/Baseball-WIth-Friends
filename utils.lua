@@ -1,6 +1,3 @@
-pico-8 cartridge // http://www.pico-8.com
-version 38
-__lua__
 
 --
 -- ## vec3 operations.
@@ -593,4 +590,35 @@ function cprint(msg, y, c)
     local half_width = #msg * 2 -- 4 pixels per character, but halved.
     local x = 64 - half_width
     print(msg, x, y, c)
+end
+
+log_y = 10
+log_messages = {}
+
+function log(msg)
+    add(log_messages, msg)
+    if #log_messages>5 then deli(log_messages, 1) end
+end
+
+function log_v(v)
+    log(flr(v.x) .. ',' .. flr(v.y) .. ',' .. flr(v.z))
+end
+
+function draw_log()
+    local init = log_y
+    for i,msg in ipairs(log_messages) do
+        print(msg, 0, init)
+        init += 10
+    end
+end
+
+fixed_y = 10
+
+function fixed(msg)
+    -- print(msg, 0, fixed_y)
+    fixed_y += 10
+end
+
+function fixed_reset()
+    fixed_y = 10
 end

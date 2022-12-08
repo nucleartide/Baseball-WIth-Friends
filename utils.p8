@@ -588,3 +588,9 @@ end
 function inverse_lerp(n, a, b)
 	return (n - a) / (b - a)
 end
+
+function cprint(msg, y, c)
+    local half_width = #msg * 2 -- 4 pixels per character, but halved.
+    local x = 64 - half_width
+    print(msg, x, y, c)
+end

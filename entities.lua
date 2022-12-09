@@ -133,7 +133,7 @@ function get_batter_worldspace(b, home_plate_pos)
     return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
-function update_batter_and_ball(b, ball1, bases)
+function update_batter_and_ball_and_score(b, ball1, score, bases)
     if b.player_num==nil then
         return
     end
@@ -191,10 +191,9 @@ function update_batter_and_ball(b, ball1, bases)
             -- if ball was not hit,
             -- and the ball was thrown,
             -- increment strikes.
-            assert(false, 'refactor to pass in a score object')
             if b.state==batter_swinging and ball1.state == ball_throwing then
                 log('strike!')
-                -- num_strikes += 1
+                score.num_strikes += 1
             end
 
             if ball1.state != ball_throwing then
@@ -454,7 +453,7 @@ function ball(pos, initial_state, is_owned_by)
     }
 end
 
-function simulate_ball_physics_async(b, fielders, catcher1, pitcher1, active_batter, num_strikes)
+function simulate_ball_physics_async(b, fielders, catcher1, pitcher1, active_batter, score)
     -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
@@ -481,40 +480,32 @@ function simulate_ball_physics_async(b, fielders, catcher1, pitcher1, active_bat
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        assert(false, 'todo: pass in a score object to update instead of returning results')
-        return evaluate_ball_bounced_async(b, catcher1, pitcher1, active_batter, num_strikes)
+        return evaluate_ball_bounced_async(b, catcher1, pitcher1, active_batter, score)
     end
     return result_nothing
 end
 
-function evaluate_ball_bounced_async(ball, catcher1, pitcher1, active_batter, num_strikes)
+function evaluate_ball_bounced_async(ball, catcher1, pitcher1, active_batter, score)
     assert(active_batter!=nil)
-    assert(false, 'todo: pass in a scoring object.')
     local result = is_fair(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
-            local return_code = result_nothing
-            if num_strikes < 2 then
+            if score.num_strikes < 2 then
                 log('strike!')
-                return_code = result_strike
+                score.num_strikes += 1
             end
             return_ball_to_catcher_async(ball, catcher1, pitcher1)
-            return return_code
         elseif result == ball_is_home_run then
-            local return_code = result_nothing
             log('home run!')
             return_ball_to_catcher_async(ball, catcher1, pitcher1)
-            return_code = result_run
-            return return_code
+            score.num_runs += 1
         end
         ball.has_bounced = true
     else
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
-                local return_code = result_nothing
                 log('ground rule double') assert(false)
                 return_ball_to_catcher_async(ball, catcher1, pitcher1)
-                return return_code
             else
                 -- hit the endfield walls. zero out velocity.
                 ball.vel.x = 0
@@ -522,9 +513,7 @@ function evaluate_ball_bounced_async(ball, catcher1, pitcher1, active_batter, nu
                 ball.vel.z = 0
 
                 -- return ball after 1s.
-                delay(function()
-                    return_ball_to_catcher_async(ball, catcher1, pitcher1)
-                end, 60)
+                return_ball_to_catcher_async(ball, catcher1, pitcher1)
             end
         elseif ball.state != ball_returning then
             local len = length(ball.vel)
@@ -533,13 +522,10 @@ function evaluate_ball_bounced_async(ball, catcher1, pitcher1, active_batter, nu
                 ball.state = ball_returning
 
                 -- the ball has settled. return the ball to the catcher.
-                delay(function()
-                    return_ball_to_catcher_async(ball, catcher1, pitcher1)
-                end, 60)
+                return_ball_to_catcher_async(ball, catcher1, pitcher1)
             end
         end
     end
-    return result_nothing
 end
 
 function is_foul(ball1)
@@ -638,7 +624,7 @@ function return_ball_to_catcher_async(ball, catcher1, pitcher1)
     end, 60)
 end
 
-function animate_ball_throw_async(b, fielders, catcher1, pitcher1, active_batter)
+function throw_ball_async(b, fielders, catcher1, pitcher1, active_batter)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)

@@ -78,12 +78,14 @@ end
 
 function update_game()
     update_fielder_and_ball(pitcher1, ball1)
-    update_batter_and_ball(batter1, ball1, bases)
+    update_batter_and_ball_and_score(batter1, ball1, score, bases)
 
     if ball1.state == ball_throwing then
-        animate_ball_throw_async(ball1, fielders, catcher1, pitcher1, active_batter)
+        throw_ball_async(ball1, fielders, catcher1, pitcher1, active_batter)
+        -- todo: pass in a callback to update the score when done
+        assert('todo: rely on callbacks instead of async. see the note above.')
     elseif ball1.state == ball_idle_physical_obj then
-        simulate_ball_physics_async(ball1, fielders, catcher1, pitcher1, active_batter)
+        simulate_ball_physics_async(ball1, fielders, catcher1, pitcher1, active_batter, score)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then

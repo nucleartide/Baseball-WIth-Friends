@@ -81,10 +81,10 @@ function update_game()
     update_batter_and_ball(batter1, ball1, bases)
 
     if ball1.state == ball_throwing then
-        animate_thrown_ball(ball1, fielders, catcher1, pitcher1, active_batter)
+        animate_ball_throw_async(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_idle_physical_obj then
         assert(active_batter)
-        local result = simulate_as_rigidbody(ball1, fielders, catcher1, pitcher1, active_batter, num_strikes)
+        local result = simulate_ball_physics_async(ball1, fielders, catcher1, pitcher1, active_batter, num_strikes)
         if result == result_strike then
             num_strikes += 1
         elseif result == result_run then
@@ -109,7 +109,7 @@ function draw_game()
     fixed(ball1.pos.x)
     fixed(ball1.pos.y)
     fixed(ball1.pos.z)
-    fixed(in_game_bounds(ball1.pos))
+    fixed(is_fair(ball1.pos))
     fixed('strikes:' .. num_strikes)
     fixed('balls:' .. num_balls)
     fixed('runs:' .. num_runs)

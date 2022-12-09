@@ -631,7 +631,7 @@ function fixed_reset()
     fixed_y = 10
 end
 
-function in_game_bounds(v)
+function is_fair(v)
     -- z values.
     -- local behind_field_corner = (-113 * real2game) - half_diagonal
     local home_plate = -half_diagonal

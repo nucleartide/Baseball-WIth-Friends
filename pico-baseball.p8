@@ -19,6 +19,7 @@ __lua__
 -- <verb>_<entity>_and_<entity> -- mutates second arg
 -- get_<entity>_<description> - no mutation
 -- is_<description> -- no mutation
+-- <something>_<async> -- indicates that this function contains a delay
 
 _init = init_game
 

@@ -69,8 +69,11 @@ end
 
 function update_fielder_and_ball(f, ball1)
     if f.player_num~=nil and btnp(4, f.player_num) and ball1.is_owned_by==f then
+        -- grab reference.
+        local trajectory = f.pitches[1]
+
         -- set trajectory.
-        ball1.trajectory = f.pitches[1]
+        ball1.trajectory = trajectory
 
         -- set animation.
         ball1.t = 0
@@ -205,7 +208,7 @@ function update_batter_and_ball(b, ball1, bases)
     end
 
     -- compute the bat knob and bat end locatinos.
-    compute_bat_knob_and_end_points(b)
+    compute_batter_bat_endpoints(b)
 end
 
 function is_hit(bat_knob, bat_end, ball, batter, swing_t, bases)
@@ -295,7 +298,7 @@ function hit_ball(bat_knob, bat_end, ball, batter, xt, bases)
         ball.vel.z = abs(direction_vector.z) * xt * 200
 end
 
-function compute_bat_knob_and_end_points(b)
+function compute_batter_bat_endpoints(b)
     -- compute the knob point.
     local knob = vec3()
     knob.y += b.pivot_to_bat_knob_len
@@ -451,7 +454,7 @@ function ball(pos, initial_state, is_owned_by)
     }
 end
 
-function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter, num_strikes)
+function simulate_ball_physics_async(b, fielders, catcher1, pitcher1, active_batter, num_strikes)
     -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
@@ -478,14 +481,16 @@ function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter, n
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        return evaluate_bounce(b, catcher1, pitcher1, active_batter, num_strikes)
+        assert(false, 'todo: pass in a score object to update instead of returning results')
+        return evaluate_ball_bounced_async(b, catcher1, pitcher1, active_batter, num_strikes)
     end
     return result_nothing
 end
 
-function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
+function evaluate_ball_bounced_async(ball, catcher1, pitcher1, active_batter, num_strikes)
     assert(active_batter!=nil)
-    local result = in_game_bounds(ball.pos)
+    assert(false, 'todo: pass in a scoring object.')
+    local result = is_fair(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
             local return_code = result_nothing
@@ -493,12 +498,12 @@ function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
                 log('strike!')
                 return_code = result_strike
             end
-            catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+            return_ball_to_catcher_async(ball, catcher1, pitcher1)
             return return_code
         elseif result == ball_is_home_run then
             local return_code = result_nothing
             log('home run!')
-            catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+            return_ball_to_catcher_async(ball, catcher1, pitcher1)
             return_code = result_run
             return return_code
         end
@@ -508,7 +513,7 @@ function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
             if ball.pos.y > home_run_y_threshold then
                 local return_code = result_nothing
                 log('ground rule double') assert(false)
-                catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+                return_ball_to_catcher_async(ball, catcher1, pitcher1)
                 return return_code
             else
                 -- hit the endfield walls. zero out velocity.
@@ -518,7 +523,7 @@ function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
 
                 -- return ball after 1s.
                 delay(function()
-                    catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+                    return_ball_to_catcher_async(ball, catcher1, pitcher1)
                 end, 60)
             end
         elseif ball.state != ball_returning then
@@ -529,7 +534,7 @@ function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
 
                 -- the ball has settled. return the ball to the catcher.
                 delay(function()
-                    catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+                    return_ball_to_catcher_async(ball, catcher1, pitcher1)
                 end, 60)
             end
         end
@@ -595,7 +600,7 @@ function is_strike(b)
     end
 end
 
-function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
+function pickup_ball_async(b, fielders, catcher1, pitcher1, active_batter)
     assert(#fielders>0)
 
     local result = nil
@@ -608,13 +613,13 @@ function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
             if f==catcher1 then
                 log('ball was caught')
 
-                if not active_batter.state == batter_swinging_ball_was_hit then
+                if active_batter.state != batter_swinging_ball_was_hit then
                     result = is_strike(b)
                 end
 
                 -- after 1s, catcher throws the ball back.
                 delay(function()
-                    return_ball_to_pitcher(b, f, pitcher1, active_batter)
+                    return_ball_to_pitcher(b, f, pitcher1)
                 end, 60)
 
                 return result
@@ -624,19 +629,16 @@ function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
     return result
 end
 
-function catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
+function return_ball_to_catcher_async(ball, catcher1, pitcher1)
     ball.state = ball_holding
     ball.is_owned_by = catcher1
 
     delay(function()
-        log('ball is returned')
-        ball.is_owned_by = nil
-                    assert(active_batter!=nil)
-        return_ball_to_pitcher(ball, catcher1, pitcher1, active_batter)
+        return_ball_to_pitcher(ball, catcher1, pitcher1)
     end, 60)
 end
 
-function animate_thrown_ball(b, fielders, catcher1, pitcher1, active_batter)
+function animate_ball_throw_async(b, fielders, catcher1, pitcher1, active_batter)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
@@ -646,7 +648,7 @@ function animate_thrown_ball(b, fielders, catcher1, pitcher1, active_batter)
         -- check whether any fielders are around to catch.
         -- can filter out by is_owned_by
         assert(fielders~=nil)
-        pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
+        pickup_ball_async(b, fielders, catcher1, pitcher1, active_batter)
     end
 
     -- increment timer for next frame.

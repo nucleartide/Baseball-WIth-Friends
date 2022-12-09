@@ -25,9 +25,18 @@ ball_throwing = 1
 ball_idle_physical_obj = 2
 ball_returning = 3 -- the ball has been caught by the catcher, and is awaiting return to the pitcher.
 
-batter_batting = 0
-batter_charging = 1
-batter_swinging = 2
-batter_running_unsafe = 3
-batter_running_safe = 4
-batter_swinging_ball_was_hit = 5
+batter_batting = 0 -- handles the "no swing" case.
+batter_charging = 1 -- meaning that z is held down.
+batter_swinging = 2 -- meaning that the bat is actively being swung.
+batter_swinging_ball_was_hit = 5 -- meaning that the bat has been swung, and the ball was hit.
+batter_swinging_ball_was_missed = 4 -- meaning that the bat has been swung, and the ball was missed.
+
+fielder_fielding = 0
+fielder_selecting_action = 1
+pitcher_selecting_pitch = 2
+pitcher_selecting_endpoint = 3
+
+result_strike = 0
+result_ball = 1
+result_run = 2
+result_nothing = 3

@@ -77,14 +77,23 @@ function init_game()
 end
 
 function update_game()
-    update_fielder(pitcher1, ball1)
-    update_batter(batter1, ball1, bases)
+    update_fielder_and_ball(pitcher1, ball1)
+    update_batter_and_ball(batter1, ball1, bases)
 
     if ball1.state == ball_throwing then
         animate_thrown_ball(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_idle_physical_obj then
         assert(active_batter)
-        simulate_as_rigidbody(ball1, fielders, catcher1, pitcher1, active_batter)
+        local result = simulate_as_rigidbody(ball1, fielders, catcher1, pitcher1, active_batter, num_strikes)
+        if result == result_strike then
+            num_strikes += 1
+        elseif result == result_run then
+            num_runs += 1
+        elseif result == result_nothing then
+            -- no-op
+        else
+            assert(false, result)
+        end
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then

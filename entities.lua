@@ -57,12 +57,7 @@ end
 -->8
 -- fielder.
 
-function fielder(pos, player_num, _ball, _is_catcher)
-    fielder_fielding = 0
-    fielder_selecting_action = 1
-    pitcher_selecting_pitch = 2
-    pitcher_selecting_endpoint = 3
-
+function fielder(pos, player_num)
     return assign(player(pos, player_num), {
         -- ...
     })
@@ -72,131 +67,18 @@ function get_fielder_midpoint(f)
     return vec3(f.pos.x, f.h*.5, f.pos.z)
 end
 
-function update_fielder_fielding(f)
-    -- if z is pressed,
-    -- player_num is not nil (so it's a human player),
-    -- and player has the ball,
-    if (
-        f.player_num ~= nil and
-        btn(4, f.player_num) and
-        f.ball ~= nil
-    ) then
-        -- transition state.
-        f.state = fielder_selecting_action
-    end
+function update_fielder_and_ball(f, ball1)
+    if f.player_num~=nil and btnp(4, f.player_num) and ball1.is_owned_by==f then
+        -- set trajectory.
+        ball1.trajectory = f.pitches[1]
 
-    -- otherwise allow movement.
-    move_player(f)
-end
+        -- set animation.
+        ball1.t = 0
+        ball1.throw_duration = (distance2(trajectory[1], trajectory[4]) / 200) * 60
 
-function update_fielder_when_selecting_action(f)
-
-    if (f.player_num==nil) return
-
-    --
-    -- handle arrow keys first.
-    --
-
-    -- clamp to ensure selected action index is a valid index.
-    local actions = get_actions_for_fielder(f)
-    f.selected_action_index = mid(1, f.selected_action_index, #actions)
-
-    -- given input, update selected action index.
-    if btnp(0, f.player_num) then f.selected_action_index -= 1 end
-    if btnp(1, f.player_num) then f.selected_action_index += 1 end
-
-    -- mod to wraparound index.
-    f.selected_action_index -= 1
-    f.selected_action_index %= #actions
-    f.selected_action_index += 1
-
-    --
-    -- handle action buttons.
-    --
-
-    -- if releasing button, then go back to fielding state.
-    if btnr(4, f.player_num) then
-        f.state = fielder_fielding
-        f.selected_action_index = -1
-        return
-    end
-
-    -- if pressing x, then perform action.
-    if btnp(5, f.player_num) then
-        local action = actions[f.selected_action_index]
-        action.on_action(f, action)
-        return
-    end
-end
-
-function update_pitcher_selecting_pitch(f, pitch_actions)
-    assert(pitch_actions~=nil)
-
-    -- todo: be able to update select using left and right arrow buttons.
-
-    -- clamp to ensure selected action index is a valid index.
-    local actions = pitch_actions
-    f.selected_action_index = mid(1, f.selected_action_index, #actions)
-
-    -- given input, update selected action index.
-    if btnp(0, f.player_num) then f.selected_action_index -= 1 end
-    if btnp(1, f.player_num) then f.selected_action_index += 1 end
-
-    -- mod to wraparound index.
-    f.selected_action_index -= 1
-    f.selected_action_index %= #actions
-    f.selected_action_index += 1
-
-    if btnp(5, f.player_num) then
-        f.state = pitcher_selecting_endpoint
-    end
-end
-
-function update_pitcher_selecting_endpoint(f, on_throw)
-    if btn(0) then
-        f.reticle.x -= 1
-    end
-    if btn(1) then
-        f.reticle.x += 1
-    end
-    if btn(2) then
-        f.reticle.y += 1
-    end
-    if btn(3) then
-        f.reticle.y -= 1
-    end
-
-    if btnp(5, f.player_num) then
-        -- throw the ball, taking the reticle's position as the destination
-        -- position.
-        local dest_pos = worldspace(f.dest.pos, f.reticle)
-
-        -- throw the ball.
-        throw_ball(f.ball, f.pos, dest_pos, f.dest)
-
-        -- unset ownership of the ball.
-        f.ball = nil
-
-        f.state = fielder_fielding
-    end
-end
-
-function update_fielder(f, ball1)
-    if f.player_num==nil then
-        return
-    end
-
-    if btnp(4, f.player_num) and ball1.is_owned_by==f then
-        throw_ball(ball1, f.pitches[1])
+        -- set state.
+        ball1.state = ball_throwing
         ball1.is_owned_by = nil
-    end
-end
-
-function get_actions_for_fielder(f)
-    if f.state == pitcher_selecting_pitch then
-        return pitch_actions
-    else
-        return throw_actions
     end
 end
 
@@ -205,10 +87,10 @@ end
 
 -- goal for today: get this bat drawn and animated.
 function batter(x, z, player_num, handedness)
-    -- determine the rel_to_home_plate_pos.
     handedness = handedness or 'right'
-    local relx = handedness=='right' and -rel_to_home_plate_x or rel_to_home_plate_x
+
     local player_obj = player(vec3(x, 0, z), player_num)
+    local relx = handedness=='right' and -rel_to_home_plate_x or rel_to_home_plate_x
 
     return assign(player_obj, {
         -- state of player.
@@ -240,9 +122,6 @@ function batter(x, z, player_num, handedness)
         t = 0,
         charging_anim_len = 10, -- cycle every 10 frames.
         swing_anim_len = .25*60, -- half a second.
-
-        -- whether the batter has swung the bat.
-        did_swing = false,
     })
 end
 
@@ -251,7 +130,7 @@ function get_batter_worldspace(b, home_plate_pos)
     return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
-function update_batter(b, ball1, bases)
+function update_batter_and_ball(b, ball1, bases)
     if b.player_num==nil then
         return
     end
@@ -300,17 +179,19 @@ function update_batter(b, ball1, bases)
 
         -- check whether the bat is in "hit" range.
         local t = b.t / b.swing_anim_len
-        local in_range, xt = in_swing_range(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
+        local in_range, xt = is_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
 
         if in_range and ball1.state == ball_throwing then
-            handle_ball_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
+            b.state = batter_swinging_ball_was_hit
+            hit_ball(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
         elseif b.t >= b.swing_anim_len then
             -- if ball was not hit,
             -- and the ball was thrown,
             -- increment strikes.
+            assert(false, 'refactor to pass in a score object')
             if b.state==batter_swinging and ball1.state == ball_throwing then
                 log('strike!')
-                num_strikes += 1
+                -- num_strikes += 1
             end
 
             if ball1.state != ball_throwing then
@@ -327,7 +208,7 @@ function update_batter(b, ball1, bases)
     compute_bat_knob_and_end_points(b)
 end
 
-function in_swing_range(bat_knob, bat_end, ball, batter, swing_t, bases)
+function is_hit(bat_knob, bat_end, ball, batter, swing_t, bases)
     assert(ball~=nil)
     assert(batter~=nil)
     assert(swing_t~=nil)
@@ -370,11 +251,10 @@ function in_swing_range(bat_knob, bat_end, ball, batter, swing_t, bases)
     return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range, xt
 end
 
-function handle_ball_hit(bat_knob, bat_end, ball, batter, xt, bases)
+function hit_ball(bat_knob, bat_end, ball, batter, xt, bases)
     log('ball was hit')
     assert(ball~=nil)
     assert(batter~=nil)
-    batter.state = batter_swinging_ball_was_hit
 
     local ball_pos = ball.pos
 
@@ -519,62 +399,6 @@ function draw_batter(b, bases)
 end
 
 -->8
--- fielder action.
-
--- x,y,z: local space position.
--- ch: if applicable, the character that should be displayed for this action.
--- parent_pos: the parent position that this action is displayed relative to.
--- on_action: callback that will be executed should this action be selected. accepts a fielder.
-function fielder_action(x,y,z,ch,parent_pos,on_action)
-    assert(parent_pos~=nil)
-    assert(on_action~=nil)
-
-    return {
-        parent_pos = parent_pos, -- the parent vec3 that this action should be drawn relative to.
-        pos = vec3(x,y,z), -- local space vec3.
-
-        -- display characteristics.
-        -- currently just used for prototyping.
-        ch = ch,
-        c = 8,
-
-        -- class identifier.
-        fielder_action = true,
-
-        -- the behavior that will execute upon action selection.
-        on_action = on_action,
-    }
-end
-
--- draw the action as a ui element in world space.
-function fielder_action_draw(p,player1)
-    assert(player1~=nil)
-    local new_pos = vec3_set(vec3(), player1.pos)
-    vec3_add_to(new_pos, p.pos)
-    local sx, sy = world2screen(new_pos)
-    sx -= 3
-    sy -= 3
-    print(p.ch, sx, sy, p.c)
-end
-
--- draw a selection circle around the action.
-function fielder_action_draw_select(pa)
-    assert(pa.pos~=nil)
-
-    -- if there is a parent_pos, then create a custom pos
-    local worldspace
-    if pa.parent_pos~=nil then
-        worldspace = vec3_set(vec3(), pa.parent_pos)
-        vec3_add_to(worldspace, pa.pos)
-    else
-        worldspace = pa.pos
-    end
-
-    local sx, sy = world2screen(worldspace)
-    circ(sx, sy, 4, 9)
-end
-
--->8
 -- pitcher.
 
 -- x,z: position
@@ -590,10 +414,6 @@ function pitcher(pos, v1, v2, v3, v4, player_num)
             cubic_bezier(v1, v2, v3, v4),
         },
     })
-end
-
-function update_pitcher(p)
-    update_fielder(p)
 end
 
 function pitcher_draw(p)
@@ -615,12 +435,12 @@ function ball(pos, initial_state, is_owned_by)
         -- will be used soon.
         is_owned_by = is_owned_by,
 
+        -- state of the ball.
+        state = initial_state,
+
         -- throw animation.
         t = 0, -- timer field used for animation.
         throw_duration = -1, -- this is dynamically set elsewhere.
-
-        -- state of the ball.
-        state = initial_state,
 
         -- populated when thrown. of type cubic_bezier.
         trajectory = nil,
@@ -631,7 +451,7 @@ function ball(pos, initial_state, is_owned_by)
     }
 end
 
-function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter)
+function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter, num_strikes)
     -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
@@ -658,34 +478,38 @@ function simulate_as_rigidbody(b, fielders, catcher1, pitcher1, active_batter)
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        evaluate_bounce(b, catcher1, pitcher1, active_batter)
+        return evaluate_bounce(b, catcher1, pitcher1, active_batter, num_strikes)
     end
+    return result_nothing
 end
 
-function evaluate_bounce(ball, catcher1, pitcher1, active_batter)
+function evaluate_bounce(ball, catcher1, pitcher1, active_batter, num_strikes)
     assert(active_batter!=nil)
     local result = in_game_bounds(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
+            local return_code = result_nothing
             if num_strikes < 2 then
                 log('strike!')
-                num_strikes += 1
+                return_code = result_strike
             end
             catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
-            return
+            return return_code
         elseif result == ball_is_home_run then
+            local return_code = result_nothing
             log('home run!')
-            num_runs += 1
             catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
-            return
+            return_code = result_run
+            return return_code
         end
         ball.has_bounced = true
     else
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
+                local return_code = result_nothing
                 log('ground rule double') assert(false)
                 catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)
-                return
+                return return_code
             else
                 -- hit the endfield walls. zero out velocity.
                 ball.vel.x = 0
@@ -710,14 +534,10 @@ function evaluate_bounce(ball, catcher1, pitcher1, active_batter)
             end
         end
     end
+    return result_nothing
 end
 
-function reset_ball_state(ball1)
-    log('resetting ball state.')
-    ball1.has_bounced = false
-end
-
-function check_for_foul_ball(ball1)
+function is_foul(ball1)
     -- get the ball's z.
     z = ball1.pos.z
 
@@ -731,31 +551,18 @@ function check_for_foul_ball(ball1)
     return z < z_line -- foul lines are still fair
 end
 
-function throw_ball(b, trajectory)
-    -- set trajectory.
-    b.trajectory = trajectory
-
-    -- set animation.
-    b.t = 0
-    b.throw_duration = (distance2(trajectory[1], trajectory[4]) / 200) * 60
-
-    -- set state.
-    b.state = ball_throwing
-end
-
-function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
+function return_ball_to_pitcher(b, fielder, pitcher)
     assert(fielder != nil)
     assert(pitcher != nil)
-    local start = get_fielder_midpoint(fielder)
-    local _end = get_fielder_midpoint(pitcher)
+    log('ball is returned')
 
     -- reset ball state.
-    reset_ball_state(b)
-
-    -- reset batter state.
-    active_batter.did_swing = false
+    b.has_bounced = false
+    b.is_owned_by = nil
 
     -- set trajectory.
+    local start = get_fielder_midpoint(fielder)
+    local _end = get_fielder_midpoint(pitcher)
     b.trajectory = cubic_bezier(
         start,
         vec3_lerp_into(start, _end, vec3(), .33),
@@ -771,7 +578,7 @@ function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
     b.state = ball_throwing
 end
 
-function evaluate_ball_strike_zone(b)
+function is_strike(b)
     -- x should be -2.5 to 2.5 for strike.
     -- y should be 2.5 to 7.5 for strike.
     local half_strike_zone = 2.5
@@ -781,15 +588,17 @@ function evaluate_ball_strike_zone(b)
     local y = b.pos.y
     if xl<=x and x<=xr and yb<=y and y<=yt then
         log('strrrrrike!')
-        num_strikes += 1
+        return true
     else
         log('ball!')
-        num_balls += 1
+        return false
     end
 end
 
 function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
     assert(#fielders>0)
+
+    local result = nil
     for f in all(fielders) do
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
         if d<ball_catch_radius then
@@ -799,20 +608,20 @@ function pick_up_ball_if_nearby(b, fielders, catcher1, pitcher1, active_batter)
             if f==catcher1 then
                 log('ball was caught')
 
-                if not active_batter.did_swing then
-                    evaluate_ball_strike_zone(b)
+                if not active_batter.state == batter_swinging_ball_was_hit then
+                    result = is_strike(b)
                 end
 
                 -- after 1s, catcher throws the ball back.
                 delay(function()
-                    log('ball is returned')
-                    b.is_owned_by = nil
-                    assert(active_batter!=nil)
                     return_ball_to_pitcher(b, f, pitcher1, active_batter)
                 end, 60)
+
+                return result
             end
         end
     end
+    return result
 end
 
 function catcher_has_new_ball(ball, catcher1, pitcher1, active_batter)

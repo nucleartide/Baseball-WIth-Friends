@@ -9,13 +9,16 @@ __lua__
 #include entities.lua
 #include game_state.lua
 
-assert(false, 'strikekeeping seems a little buggy, please fix bugs first.')
-assert(false, 'likely a state related issue, review code to see where state is hiding')
-assert(false, 'how to be more stateless')
-assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
-assert(false, 'state is needed, but you can limit the scope of state')
-assert(false, 'continue thinking how to isolate the amount of state that you need to worry about in any part of your program')
-assert(false, 'get rid of vec3 mutation')
+-- assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
+-- todo: get rid of vec3 mutation
+-- todo: mutating functions should only mutate the first argument
+-- todo: delaying functions should make a note in the function name
+-- naming conventions:
+-- draw_<entity> - no mutation
+-- <verb>_<entity> - mutates first arg
+-- <verb>_<entity>_and_<entity> -- mutates second arg
+-- get_<entity>_<description> - no mutation
+-- is_<description> -- no mutation
 
 _init = init_game
 

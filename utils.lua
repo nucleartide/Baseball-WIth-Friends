@@ -47,6 +47,14 @@ function vec3_set(v1, v2)
 	return v1
 end
 
+function vec3_dupe(v)
+	local v2 = vec3()
+	v2.x = v.x
+	v2.y = v.y
+	v2.z = v.z
+	return v2
+end
+
 function vec3_flip(v)
 	return vec3(v.x*-1, v.y, v.z)
 end

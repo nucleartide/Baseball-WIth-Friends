@@ -9,17 +9,19 @@ __lua__
 #include entities.lua
 #include game_state.lua
 
--- assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
--- todo: get rid of vec3 mutation
--- todo: mutating functions should only mutate the first argument
--- todo: delaying functions should make a note in the function name
 -- naming conventions:
+--
 -- draw_<entity> - no mutation
 -- <verb>_<entity> - mutates first arg
 -- <verb>_<entity>_and_<entity> -- mutates second arg
 -- get_<entity>_<description> - no mutation
 -- is_<description> -- no mutation
 -- <something>_<async> -- indicates that this function contains a delay
+-- vec3s functions are generally mutable. but write immutable versions of vec3 functions in the future.
+
+--    - [ ] todo: pass in a scoring object.
+--    - [ ] Fix up game so there are reasonably no exceptions; do this by reviewing code for false assertions
+-- assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 
 _init = init_game
 

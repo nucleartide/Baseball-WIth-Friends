@@ -12,9 +12,7 @@ local bases -- 15 tokens to get rid of global state. i'll take it.
     , ball1
     , fielders
     , batter1
-    , num_strikes
-    , num_balls
-    , num_runs
+    , score
     , active_batter
 
 function init_game()
@@ -69,9 +67,11 @@ function init_game()
 
     batter1 = batter(-10, bases[1].z, 1, 'right')
 
-    num_strikes = 0
-    num_balls = 0
-    num_runs = 0
+    score = {
+        num_strikes = 0,
+        num_balls = 0,
+        num_runs = 0,
+    }
 
     active_batter = batter1
 end
@@ -83,17 +83,7 @@ function update_game()
     if ball1.state == ball_throwing then
         animate_ball_throw_async(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_idle_physical_obj then
-        assert(active_batter)
-        local result = simulate_ball_physics_async(ball1, fielders, catcher1, pitcher1, active_batter, num_strikes)
-        if result == result_strike then
-            num_strikes += 1
-        elseif result == result_run then
-            num_runs += 1
-        elseif result == result_nothing then
-            -- no-op
-        else
-            assert(false, result)
-        end
+        simulate_ball_physics_async(ball1, fielders, catcher1, pitcher1, active_batter)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then
@@ -110,9 +100,9 @@ function draw_game()
     fixed(ball1.pos.y)
     fixed(ball1.pos.z)
     fixed(is_fair(ball1.pos))
-    fixed('strikes:' .. num_strikes)
-    fixed('balls:' .. num_balls)
-    fixed('runs:' .. num_runs)
+    fixed('strikes:' .. score.num_strikes)
+    fixed('balls:' .. score.num_balls)
+    fixed('runs:' .. score.num_runs)
     fixed_reset()
 
     draw_log()
@@ -189,8 +179,8 @@ function draw_game()
     -- print('2-2', 64-ceil(3*4*.5)+1, 0, 7)
     -- num_strikes = 0
     -- num_balls = 0
-    cprint(num_balls .. '-' .. num_strikes, 1, 7)
-    print(num_runs, 1, 1, 7)
+    cprint(score.num_balls .. '-' .. score.num_strikes, 1, 7)
+    print(score.num_runs, 1, 1, 7)
 end
 
 end -- End game state scope.

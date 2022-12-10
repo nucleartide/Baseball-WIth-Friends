@@ -14,6 +14,8 @@ local bases -- 15 tokens to get rid of global state. i'll take it.
     , batter1
     , score
     , active_batter
+    , on_return_ball_fielder2pitcher
+    , on_return_ball_catcher2pitcher
 
 function init_game()
     bases = {
@@ -74,6 +76,14 @@ function init_game()
     }
 
     active_batter = batter1
+
+    on_return_ball_fielder2pitcher = function(fielder)
+        return_ball_to_pitcher(ball1, fielder, pitcher1)
+    end
+
+    on_return_ball_catcher2pitcher = function()
+        return_ball_to_pitcher(ball1, catcher1, pitcher1)
+    end
 end
 
 function update_game()
@@ -81,11 +91,9 @@ function update_game()
     update_batter_and_ball_and_score(batter1, ball1, score, bases)
 
     if ball1.state == ball_throwing then
-        throw_ball(ball1, fielders, catcher1, pitcher1, active_batter)
-        -- todo: pass in a callback to update the score when done
-        assert('todo: rely on callbacks instead of async. see the note above.')
+        throw_ball(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher)
     elseif ball1.state == ball_idle_physical_obj then
-        simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score)
+        simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then

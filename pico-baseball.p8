@@ -18,9 +18,8 @@ __lua__
 -- is_<description> -- no mutation
 -- <something>_<async> -- indicates that this function contains a delay
 -- vec3s functions are generally mutable. but write immutable versions of vec3 functions in the future.
+-- on_<verb>_<entity>_<description> - naming for functions that may be executed in the future
 
---    - [ ] todo: pass in a scoring object.
---    - [ ] Fix up game so there are reasonably no exceptions; do this by reviewing code for false assertions
 -- assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
 
 _init = init_game

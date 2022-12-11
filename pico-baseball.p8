@@ -21,6 +21,7 @@ __lua__
 -- on_<verb>_<entity>_<description> - naming for functions that may be executed in the future
 
 -- assert(false, 'you no longer need to ctrl-r, please play the game loop and think where it needs to go')
+-- there are some bugs, but let's keep moving onto new features.
 
 _init = init_game
 

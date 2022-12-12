@@ -2,6 +2,7 @@
 assert(false, 'restrict when the batter is able to bat. seems buggy.')
 assert(false, 'review state definitions')
 assert(false, 'review when state is getting mutated in game loop')
+assert(false, 'conditions for state transitions are too complex')
 
 do -- Start game state scope.
 

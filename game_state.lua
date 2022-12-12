@@ -1,4 +1,8 @@
 
+assert(false, 'restrict when the batter is able to bat. seems buggy.')
+assert(false, 'review state definitions')
+assert(false, 'review when state is getting mutated in game loop')
+
 do -- Start game state scope.
 
 local bases -- 15 tokens to get rid of global state. i'll take it.

@@ -1,4 +1,5 @@
 
+assert(false, 'todo: use stories, refactor using callbacks. the whole goal is to program fast.')
 assert(false, 'restrict when the batter is able to bat. seems buggy.')
 assert(false, 'review state definitions')
 assert(false, 'review when state is getting mutated in game loop')

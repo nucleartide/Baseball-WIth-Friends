@@ -3,6 +3,8 @@ assert(false, 'restrict when the batter is able to bat. seems buggy.')
 assert(false, 'review state definitions')
 assert(false, 'review when state is getting mutated in game loop')
 assert(false, 'conditions for state transitions are too complex')
+assert(false, 'refactor using state machine pattern')
+assert(false, 'add exhaustive state machine? whats slowing me down')
 
 do -- Start game state scope.
 

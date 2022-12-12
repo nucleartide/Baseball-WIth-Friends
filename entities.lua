@@ -176,7 +176,7 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
     end
 
     -- if player is swinging,
-    if b.state==batter_swinging or b.state==batter_swinging_ball_was_hit then
+    if b.state==batter_swinging or b.state==batter_swinging_and_hit then
         -- update the swing timer.
         b.t += 1
 
@@ -185,7 +185,7 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
         local in_range, xt = is_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
 
         if in_range and ball1.state == ball_throwing then
-            b.state = batter_swinging_ball_was_hit
+            b.state = batter_swinging_and_hit
             hit_ball(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
         elseif b.t >= b.swing_anim_len then
             -- if ball was not hit,
@@ -598,7 +598,7 @@ function pickup_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_b
             if f==catcher1 then
                 log('ball was caught')
 
-                if active_batter.state != batter_swinging_ball_was_hit then
+                if did_batter_miss(b) then
                     result = is_strike(b)
                 end
 

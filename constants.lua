@@ -28,8 +28,15 @@ ball_returning = 3 -- the ball has been caught by the catcher, and is awaiting r
 batter_batting = 0 -- handles the "no swing" case.
 batter_charging = 1 -- meaning that z is held down.
 batter_swinging = 2 -- meaning that the bat is actively being swung.
-batter_swinging_ball_was_hit = 5 -- meaning that the bat has been swung, and the ball was hit.
-batter_swinging_ball_was_missed = 4 -- meaning that the bat has been swung, and the ball was missed.
+-- batter_swinging_ball_was_hit = 5 -- meaning that the bat has been swung, and the ball was hit.
+-- batter_swinging_ball_was_missed = 4 -- meaning that the bat has been swung, and the ball was missed.
+batter_swinging_and_hit = 3
+batter_swing_and_hit = 4
+batter_swing_and_miss = 5
+
+function did_batter_miss(b)
+    return b.state != batter_swinging_and_hit and b.state != batter_swing_and_hit
+end
 
 fielder_fielding = 0
 fielder_selecting_action = 1

@@ -78,11 +78,11 @@ function init_game()
     active_batter = batter1
 
     on_return_ball_fielder2pitcher = function(fielder)
-        return_ball_to_pitcher(ball1, fielder, pitcher1)
+        return_ball_to_pitcher(ball1, fielder, pitcher1, active_batter)
     end
 
     on_return_ball_catcher2pitcher = function()
-        return_ball_to_pitcher(ball1, catcher1, pitcher1)
+        return_ball_to_pitcher(ball1, catcher1, pitcher1, active_batter)
     end
 end
 
@@ -91,7 +91,7 @@ function update_game()
     update_batter_and_ball_and_score(batter1, ball1, score, bases)
 
     if ball1.state == ball_throwing then
-        throw_ball(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher)
+        throw_ball(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     elseif ball1.state == ball_idle_physical_obj then
         simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
     elseif ball1.state == ball_holding then

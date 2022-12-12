@@ -134,12 +134,21 @@ function get_batter_worldspace(b, home_plate_pos)
 end
 
 function update_batter_and_ball_and_score(b, ball1, score, bases)
-    if b.player_num==nil then
+    if b.player_num==nil or ball1.state==ball_returning then
         return
     end
 
+    -- move the batter left and right.
+    if btn(0, b.player_num) then
+        b.rel_to_home_plate_pos.x -= 0.1
+    end
+    if btn(1, b.player_num) then
+        b.rel_to_home_plate_pos.x += 0.1
+    end
+    b.rel_to_home_plate_pos.x = clamp(b.rel_to_home_plate_pos.x, b.init_relx - 2.5, b.init_relx + 2.5)
+
     -- hold x to charge.
-    if b.state==batter_batting and btnp(4, b.player_num) and not b.did_swing then
+    if b.state==batter_batting and btnp(4, b.player_num) and ball1.state!=ball_returning then
         b.state = batter_charging
         return
     end
@@ -154,15 +163,6 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
         end
         b.reticle_z_angle = clamp(b.reticle_z_angle, .125, .375)
 
-        -- move the batter left and right.
-        if btn(0, b.player_num) then
-            b.rel_to_home_plate_pos.x -= 0.1
-        end
-        if btn(1, b.player_num) then
-            b.rel_to_home_plate_pos.x += 0.1
-        end
-        b.rel_to_home_plate_pos.x = clamp(b.rel_to_home_plate_pos.x, b.init_relx - 2.5, b.init_relx + 2.5)
-
         -- cycle the animation timer.
         b.t = (b.t + 1)%b.charging_anim_len
     end
@@ -171,7 +171,6 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
     if b.state==batter_charging and btnr(4, b.player_num) then
         b.state = batter_swinging
         b.t = 0
-        b.did_swing = true -- check to ensure batter doesn't swing again.
         return
     end
 
@@ -188,18 +187,6 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
             b.state = batter_swinging_and_hit
             hit_ball(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
         elseif b.t >= b.swing_anim_len then
-            -- if ball was not hit,
-            -- and the ball was thrown,
-            -- increment strikes.
-            if b.state==batter_swinging and ball1.state == ball_throwing then
-                log('strike!')
-                score.num_strikes += 1
-            end
-
-            if ball1.state != ball_throwing then
-                b.did_swing = false
-            end
-
             -- swing is done, reset the bat's swinging state.
             b.t = 0
             b.state = batter_batting
@@ -520,6 +507,9 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
                 -- update the ball state.
                 ball.state = ball_returning
 
+                -- reset the batter's state.
+                active_batter.state = batter_batting
+
                 -- the ball has settled. return the ball to the catcher.
                 return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
             end
@@ -541,10 +531,13 @@ function is_foul(ball1)
     return z < z_line -- foul lines are still fair
 end
 
-function return_ball_to_pitcher(b, fielder, pitcher)
+function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
     assert(fielder != nil)
     assert(pitcher != nil)
     log('ball is returned')
+
+    -- reset batter state.
+    active_batter.state = batter_batting
 
     -- reset ball state.
     b.has_bounced = false
@@ -577,18 +570,15 @@ function is_strike(b)
     local x = b.pos.x
     local y = b.pos.y
     if xl<=x and x<=xr and yb<=y and y<=yt then
-        log('strrrrrike!')
         return true
     else
-        log('ball!')
         return false
     end
 end
 
-function pickup_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher)
+function pickup_ball_and_update_score(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     assert(#fielders>0)
 
-    local result = nil
     for f in all(fielders) do
         local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
         if d<ball_catch_radius then
@@ -598,20 +588,18 @@ function pickup_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_b
             if f==catcher1 then
                 log('ball was caught')
 
-                if did_batter_miss(b) then
-                    result = is_strike(b)
+                if did_batter_miss(active_batter) and is_strike(b) then
+                    log('strike')
+                    score.num_strikes += 1
                 end
 
                 -- after 1s, catcher throws the ball back.
                 delay(function()
                     on_return_ball_fielder2pitcher(f)
                 end, 60)
-
-                return result
             end
         end
     end
-    return result
 end
 
 function return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
@@ -620,7 +608,7 @@ function return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher
     delay(on_return_ball_catcher2pitcher, 60)
 end
 
-function throw_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher)
+function throw_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
@@ -630,7 +618,7 @@ function throw_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ba
         -- check whether any fielders are around to catch.
         -- can filter out by is_owned_by
         assert(fielders~=nil)
-        pickup_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher)
+        pickup_ball_and_update_score(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     end
 
     -- increment timer for next frame.

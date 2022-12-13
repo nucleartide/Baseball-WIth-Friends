@@ -67,22 +67,31 @@ function get_fielder_midpoint(f)
     return vec3(f.pos.x, f.h*.5, f.pos.z)
 end
 
-function update_fielder_and_ball(f, ball1)
-    if f.player_num~=nil and btnp(4, f.player_num) and ball1.is_owned_by==f then
-        -- grab reference.
-        local trajectory = f.pitches[1]
+function is_owner(ball1, fielder)
+    return ball1.is_owned_by == fielder
+end
 
-        -- set trajectory.
-        ball1.trajectory = trajectory
-
-        -- set animation.
-        ball1.t = 0
-        ball1.throw_duration = (distance2(trajectory[1], trajectory[4]) / 200) * 60
-
-        -- set state.
-        ball1.state = ball_throwing
-        ball1.is_owned_by = nil
+-- is_owner == (ball1.is_owned_by==f)
+function update_fielder(f, is_fielder_owner, on_throw)
+    if f.player_num~=nil and btnp(4, f.player_num) and is_fielder_owner then
+        on_throw()
     end
+end
+
+function throw_ball(ball1, pitch_curve)
+    -- grab reference.
+    local trajectory = pitch_curve
+
+    -- set trajectory.
+    ball1.trajectory = trajectory
+
+    -- set animation.
+    ball1.t = 0
+    ball1.throw_duration = (distance2(trajectory[1], trajectory[4]) / 200) * 60
+
+    -- set state.
+    ball1.state = ball_throwing
+    ball1.is_owned_by = nil
 end
 
 -->8
@@ -133,12 +142,8 @@ function get_batter_worldspace(b, home_plate_pos)
     return worldspace(home_plate_pos, b.rel_to_home_plate_pos)
 end
 
-function update_batter_and_ball_and_score(b, ball1, score, bases)
-    if b.player_num==nil or ball1.state==ball_returning then
-        return
-    end
-
-    -- move the batter left and right.
+-- move the batter left and right.
+function move_batter(b)
     if btn(0, b.player_num) then
         b.rel_to_home_plate_pos.x -= 0.1
     end
@@ -146,63 +151,72 @@ function update_batter_and_ball_and_score(b, ball1, score, bases)
         b.rel_to_home_plate_pos.x += 0.1
     end
     b.rel_to_home_plate_pos.x = clamp(b.rel_to_home_plate_pos.x, b.init_relx - 2.5, b.init_relx + 2.5)
+end
 
-    -- hold x to charge.
-    if b.state==batter_batting and btnp(4, b.player_num) and ball1.state!=ball_returning then
-        b.state = batter_charging
+function update_batter(b, ball1, bases, catcher1, on_hit)
+    if b.player_num==nil or ball1.state==ball_returning or is_owner(ball1, catcher1) then
+        b.state = batter_batting
         return
     end
 
-    -- if player is charging,
-    if b.state==batter_charging and btn(4, b.player_num) then
-        -- move the reticle up and down.
-        if btn(2, b.player_num) then
-            b.reticle_z_angle -= 0.01
-        elseif btn(3, b.player_num) then
-            b.reticle_z_angle += 0.01
+    --
+    -- perform state transitions.
+    --
+
+    if b.state == batter_batting then
+        -- switch to charging state.
+        if btnp(4, b.player_num) then b.state = batter_charging end
+    elseif b.state == batter_charging then
+        if btn(4, b.player_num) then
+            -- move the reticle up and down.
+            if btn(2, b.player_num) then b.reticle_z_angle -= 0.01
+            elseif btn(3, b.player_num) then b.reticle_z_angle += 0.01 end
+            b.reticle_z_angle = clamp(b.reticle_z_angle, .125, .375)
+
+            -- cycle the animation timer.
+            b.t = (b.t + 1)%b.charging_anim_len
+        elseif btnr(4, b.player_num) then
+            -- switch to swinging state.
+            b.state = batter_swinging
+            b.t = 0
         end
-        b.reticle_z_angle = clamp(b.reticle_z_angle, .125, .375)
-
-        -- cycle the animation timer.
-        b.t = (b.t + 1)%b.charging_anim_len
-    end
-
-    -- release x to swing.
-    if b.state==batter_charging and btnr(4, b.player_num) then
-        b.state = batter_swinging
-        b.t = 0
-        return
-    end
-
-    -- if player is swinging,
-    if b.state==batter_swinging or b.state==batter_swinging_and_hit then
+    elseif b.state==batter_swinging or b.state==batter_swinging_and_hit then
         -- update the swing timer.
         b.t += 1
 
         -- check whether the bat is in "hit" range.
         local t = b.t / b.swing_anim_len
-        local in_range, xt = is_hit(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
+        local in_range, xt = is_hit(ball1, b, t, bases)
 
-        if in_range and ball1.state == ball_throwing then
+        -- seems sketchy, needs playtesting.
+        if in_range then
             b.state = batter_swinging_and_hit
-            hit_ball(b.rotated_knob, b.rotated_bat_end, ball1, b, t, bases)
+            on_hit(t)
         elseif b.t >= b.swing_anim_len then
-            -- swing is done, reset the bat's swinging state.
             b.t = 0
+
+            -- todo: add this in later.
+            -- b.state = b.state==batter_swinging_and_hit and batter_swing_and_hit or batter_swing_and_miss
+
+            -- for now:
             b.state = batter_batting
         end
+    else
+        -- batter_swing_and_hit = 4 -- meaning that the bat has been swung, and the ball was hit.
+        -- batter_swing_and_miss = 5 -- meaning that the bat has been swung, and the ball was missed.
     end
 
-    -- compute the bat knob and bat end locatinos.
+    move_batter(b)
     compute_batter_bat_endpoints(b)
 end
 
-function is_hit(bat_knob, bat_end, ball, batter, swing_t, bases)
+function is_hit(ball, batter, swing_t, bases)
+    assert(bases~=nil)
     assert(ball~=nil)
     assert(batter~=nil)
     assert(swing_t~=nil)
 
-    bat_knob, bat_end = get_batter_bat_worldspace(batter, bases)
+    local bat_knob, bat_end = get_batter_bat_worldspace(batter, bases)
 
     -- find the t value of the ball in the x-axis.
     local ball_pos = ball.pos
@@ -240,10 +254,11 @@ function is_hit(bat_knob, bat_end, ball, batter, swing_t, bases)
     return in_swing_timing and is_in_x_range and is_in_y_range and is_in_z_range, xt
 end
 
-function hit_ball(bat_knob, bat_end, ball, batter, xt, bases)
+function hit_ball(ball, batter, xt, bases)
     log('ball was hit')
     assert(ball~=nil)
     assert(batter~=nil)
+assert(bases~=nil)
 
     local ball_pos = ball.pos
 
@@ -294,7 +309,7 @@ function compute_batter_bat_endpoints(b)
     bat_end.y += b.bat_knob_to_bat_end_len
 
     -- rotate depending on batter state.
-    if b.state==batter_swinging then
+    if b.state==batter_swinging or b.state==batter_swinging_and_hit then
         -- determine the swing axis.
         local swing_axis = rotate_angle_axis(vec3(0,1,0), b.reticle_z_angle + .25, vec3(0,0,1))
 
@@ -310,7 +325,6 @@ function compute_batter_bat_endpoints(b)
         b.rotated_knob = rotate_angle_axis(rotated_knob, swing_angle, swing_axis)
         b.rotated_bat_end = rotate_angle_axis(rotated_bat_end, swing_angle, swing_axis)
     else
-        -- elseif b.state==batter_batting or b.state==batter_charging then
         -- determine points for bat_knob and bat_end.
         local angle = b.bat_z_angle
         b.rotated_knob = rotate_angle_axis(knob, angle, vec3(0, 0, 1))
@@ -608,7 +622,7 @@ function return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher
     delay(on_return_ball_catcher2pitcher, 60)
 end
 
-function throw_ball(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
+function update_ball_throwing(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)

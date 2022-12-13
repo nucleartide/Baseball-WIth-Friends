@@ -1,12 +1,4 @@
 
-assert(false, 'todo: use stories, refactor using callbacks. the whole goal is to program fast.')
-assert(false, 'restrict when the batter is able to bat. seems buggy.')
-assert(false, 'review state definitions')
-assert(false, 'review when state is getting mutated in game loop')
-assert(false, 'conditions for state transitions are too complex')
-assert(false, 'refactor using state machine pattern')
-assert(false, 'add exhaustive state machine? whats slowing me down')
-
 do -- Start game state scope.
 
 local bases -- 15 tokens to get rid of global state. i'll take it.
@@ -95,11 +87,16 @@ function init_game()
 end
 
 function update_game()
-    update_fielder_and_ball(pitcher1, ball1)
-    update_batter_and_ball_and_score(batter1, ball1, score, bases)
+    update_fielder(pitcher1, is_owner(ball1, pitcher1), function()
+        throw_ball(ball1, pitcher1.pitches[1])
+    end)
+
+    update_batter(batter1, ball1, bases, catcher1, function(swing_t)
+        hit_ball(ball1, batter1, swing_t, bases)
+    end)
 
     if ball1.state == ball_throwing then
-        throw_ball(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
+        update_ball_throwing(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
     elseif ball1.state == ball_idle_physical_obj then
         simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
     elseif ball1.state == ball_holding then

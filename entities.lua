@@ -550,9 +550,6 @@ function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
     assert(pitcher != nil)
     log('ball is returned')
 
-    -- reset batter state.
-    active_batter.state = batter_batting
-
     -- reset ball state.
     b.has_bounced = false
     b.is_owned_by = nil
@@ -590,49 +587,38 @@ function is_strike(b)
     end
 end
 
-function pickup_ball_and_update_score(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
-    assert(#fielders>0)
-
-    for f in all(fielders) do
-        local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
-        if d<ball_catch_radius then
-            b.state = ball_holding
-            b.is_owned_by = f
-
-            if f==catcher1 then
-                log('ball was caught')
-
-                if did_batter_miss(active_batter) and is_strike(b) then
-                    log('strike')
-                    score.num_strikes += 1
-                end
-
-                -- after 1s, catcher throws the ball back.
-                delay(function()
-                    on_return_ball_fielder2pitcher(f)
-                end, 60)
-            end
-        end
-    end
-end
-
 function return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
     ball.state = ball_holding
     ball.is_owned_by = catcher1
     delay(on_return_ball_catcher2pitcher, 60)
 end
 
-function update_ball_throwing(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
+function catch_ball(b, fielder1, active_batter, catcher1, on_strike, on_return_ball)
+    assert(on_return_ball~=nil)
+
+    b.state = ball_holding
+    b.is_owned_by = fielder1
+
+    if fielder1==catcher1 then
+        log('ball was caught')
+        if did_batter_miss(active_batter) and is_strike(b) then on_strike() end
+        delay(on_return_ball, 60)
+    end
+end
+
+function update_ball_throwing(b, fielders, on_catch)
     -- update the ball's position.
     local t = b.t / b.throw_duration
     cubic_bezier_fixed_sample(100, b.trajectory, t, b.pos)
 
-    -- if the ball has been thrown, then
+    -- if the ball has been thrown, check whether the ball has been caught.
     if t>.2 then
-        -- check whether any fielders are around to catch.
-        -- can filter out by is_owned_by
-        assert(fielders~=nil)
-        pickup_ball_and_update_score(b, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
+        for f in all(fielders) do
+            local d = distance2(get_fielder_midpoint(f), b.pos, nil, nil, nil)
+            if d<ball_catch_radius then
+                on_catch(f)
+            end
+        end
     end
 
     -- increment timer for next frame.

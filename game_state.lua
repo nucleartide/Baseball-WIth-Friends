@@ -14,8 +14,6 @@ local bases -- 15 tokens to get rid of global state. i'll take it.
     , batter1
     , score
     , active_batter
-    , on_return_ball_fielder2pitcher
-    , on_return_ball_catcher2pitcher
 
 function init_game()
     bases = {
@@ -76,17 +74,18 @@ function init_game()
     }
 
     active_batter = batter1
-
-    on_return_ball_fielder2pitcher = function(fielder)
-        return_ball_to_pitcher(ball1, fielder, pitcher1, active_batter)
-    end
-
-    on_return_ball_catcher2pitcher = function()
-        return_ball_to_pitcher(ball1, catcher1, pitcher1, active_batter)
-    end
 end
 
 function update_game()
+    local function on_strike_score()
+        log('strike')
+        score.num_strikes += 1
+    end
+
+    local function on_return_ball()
+        return_ball_to_pitcher(ball1, catcher1, pitcher1, active_batter)
+    end
+
     update_fielder(pitcher1, is_owner(ball1, pitcher1), function()
         throw_ball(ball1, pitcher1.pitches[1])
     end)
@@ -96,9 +95,11 @@ function update_game()
     end)
 
     if ball1.state == ball_throwing then
-        update_ball_throwing(ball1, fielders, catcher1, pitcher1, active_batter, on_return_ball_fielder2pitcher, score)
+        update_ball_throwing(ball1, fielders, function(fielder1)
+            catch_ball(ball1, fielder1, active_batter, catcher1, on_strike_score, on_return_ball)
+        end)
     elseif ball1.state == ball_idle_physical_obj then
-        simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
+        simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then

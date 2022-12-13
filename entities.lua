@@ -494,10 +494,10 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
                 log('strike!')
                 score.num_strikes += 1
             end
-            return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+            return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
         elseif result == ball_is_home_run then
             log('home run!')
-            return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+            return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
             score.num_runs += 1
         end
         ball.has_bounced = true
@@ -505,7 +505,7 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
                 log('ground rule double') assert(false)
-                return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
             else
                 -- hit the endfield walls. zero out velocity.
                 ball.vel.x = 0
@@ -513,7 +513,7 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
                 ball.vel.z = 0
 
                 -- return ball after 1s.
-                return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
             end
         elseif ball.state != ball_returning then
             local len = length(ball.vel)
@@ -525,7 +525,7 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
                 active_batter.state = batter_batting
 
                 -- the ball has settled. return the ball to the catcher.
-                return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
             end
         end
     end
@@ -545,7 +545,7 @@ function is_foul(ball1)
     return z < z_line -- foul lines are still fair
 end
 
-function return_ball_to_pitcher(b, fielder, pitcher, active_batter)
+function return_ball_to_pitcher(b, fielder, pitcher)
     assert(fielder != nil)
     assert(pitcher != nil)
     log('ball is returned')
@@ -587,10 +587,10 @@ function is_strike(b)
     end
 end
 
-function return_ball_to_catcher(ball, catcher1, pitcher1, on_return_ball_catcher2pitcher)
+function return_ball_to_catcher(ball, catcher1, on_return_ball)
     ball.state = ball_holding
     ball.is_owned_by = catcher1
-    delay(on_return_ball_catcher2pitcher, 60)
+    delay(on_return_ball, 60)
 end
 
 function catch_ball(b, fielder1, active_batter, catcher1, on_strike, on_return_ball)

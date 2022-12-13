@@ -1,4 +1,15 @@
 
+assert(false, 'look below')
+
+--[[
+
+- [ ] Start from the top-level, and refactor.
+    - [ ] simulate_ball_physics
+        - [ ] evaluate_ball_bounced
+    - [ ] Tee up next feature to work on. I don’t want to waste more time here.
+
+]]
+
 do -- Start game state scope.
 
 local bases -- 15 tokens to get rid of global state. i'll take it.

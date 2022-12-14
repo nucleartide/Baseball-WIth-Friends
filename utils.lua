@@ -436,6 +436,7 @@ end
 -- ## transformation functions.
 --
 
+--[[
 -- no_y is used for shadows.
 function old_world2screen(o,no_y)	
 	-- world 2 camera
@@ -458,6 +459,7 @@ function old_world2screen(o,no_y)
 	sy = 64-(z/pz+y/pz)*1.75+64 -- 1.5 to magnify, 64 to undo the previous offset
 	return sx,sy
 end
+]]
 
 function world2screen(o, no_y, flip_x)	
 	-- x.
@@ -623,7 +625,7 @@ end
 fixed_y = 10
 
 function fixed(msg)
-    -- print(msg, 0, fixed_y)
+    print(msg, 0, fixed_y)
     fixed_y += 10
 end
 
@@ -631,7 +633,8 @@ function fixed_reset()
     fixed_y = 10
 end
 
-function is_fair(v)
+-- whether vector is in fair territory.
+function is_fair_territory(v)
     -- z values.
     -- local behind_field_corner = (-113 * real2game) - half_diagonal
     local home_plate = -half_diagonal

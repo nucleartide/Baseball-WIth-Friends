@@ -1,18 +1,7 @@
 
-assert(false, 'look below')
-
---[[
-
-- [ ] Start from the top-level, and refactor.
-    - [ ] simulate_ball_physics
-        - [ ] evaluate_ball_bounced
-    - [ ] Tee up next feature to work on. I don’t want to waste more time here.
-
-]]
-
 do -- Start game state scope.
 
-local bases -- 15 tokens to get rid of global state. i'll take it.
+local bases -- 13 tokens to get rid of global state. i'll take it.
     , pitchers_mound
     , batters_box
     , catchers_box
@@ -93,8 +82,13 @@ function update_game()
         score.num_strikes += 1
     end
 
+    local function on_run_score()
+        log('run')
+        score.num_runs += 1
+    end
+
     local function on_return_ball()
-        return_ball_to_pitcher(ball1, catcher1, pitcher1, active_batter)
+        return_ball_to_pitcher(ball1, catcher1, pitcher1)
     end
 
     update_fielder(pitcher1, is_owner(ball1, pitcher1), function()
@@ -110,7 +104,9 @@ function update_game()
             catch_ball(ball1, fielder1, active_batter, catcher1, on_strike_score, on_return_ball)
         end)
     elseif ball1.state == ball_idle_physical_obj then
-        simulate_ball_physics(ball1, fielders, catcher1, pitcher1, active_batter, score, on_return_ball)
+        simulate_ball_physics(ball1, function()
+            bounce_ball(ball1, score.num_strikes, catcher1, on_return_ball, on_strike_score, on_run_score)
+        end)
     elseif ball1.state == ball_holding then
         -- no-op.
     elseif ball1.state == ball_returning then
@@ -123,16 +119,18 @@ end
 function draw_game()
     cls(3)
 
-    fixed(ball1.pos.x)
-    fixed(ball1.pos.y)
-    fixed(ball1.pos.z)
-    fixed(is_fair(ball1.pos))
-    fixed('strikes:' .. score.num_strikes)
-    fixed('balls:' .. score.num_balls)
-    fixed('runs:' .. score.num_runs)
+    -- fixed(ball1.pos.x)
+    -- fixed(ball1.pos.y)
+    -- fixed(ball1.pos.z)
+    -- fixed(is_fair_territory(ball1.pos))
+    -- fixed('strikes:' .. score.num_strikes)
+    -- fixed('balls:' .. score.num_balls)
+    -- fixed('runs:' .. score.num_runs)
+    fixed(batter1.state)
+    fixed(ball1.state)
     fixed_reset()
 
-    draw_log()
+    -- draw_log()
 
     -- draw sand around home plate.
     do

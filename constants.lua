@@ -30,15 +30,17 @@ ball_is_in_field = 2
 -- entity states.
 --
 
-ball_holding = 0
-ball_throwing = 1
-ball_idle_physical_obj = 2
-ball_returning = 3 -- the ball has been caught by the catcher, and is awaiting return to the pitcher.
+ball_holding = 'holding'
+ball_throwing = 'throwing'
+ball_idle_physical_obj = 'idle'
 
-batter_batting = 0 -- handles the "no swing" case.
-batter_charging = 1 -- meaning that z is held down.
-batter_swinging = 2 -- meaning that the bat is actively being swung.
-batter_swinging_and_hit = 3
-batter_swing_and_hit = 4 -- meaning that the bat has been swung, and the ball was hit.
-batter_swing_and_miss = 5 -- meaning that the bat has been swung, and the ball was missed.
+-- this constant is important for disabling swings while the ball is getting returned.
+ball_returning = 'returning' -- the ball has been caught by the catcher, and is awaiting return to the pitcher.
+
+batter_batting = 'batting' -- handles the "no swing" case.
+batter_charging = 'charging' -- meaning that z is held down.
+batter_swinging = 'swinging' -- meaning that the bat is actively being swung.
+batter_swinging_and_hit = 'swinging and hit'
+batter_swing_and_hit = 'swing and hit' -- meaning that the bat has been swung, and the ball was hit.
+batter_swing_and_miss = 'swing and miss' -- meaning that the bat has been swung, and the ball was missed.
 function did_batter_miss(b) return b.state != batter_swinging_and_hit and b.state != batter_swing_and_hit end

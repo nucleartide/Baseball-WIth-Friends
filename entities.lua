@@ -154,6 +154,7 @@ function move_batter(b)
 end
 
 function update_batter(b, ball1, bases, catcher1, on_hit)
+    -- this has the effect of freezing the bat when there's a strike, which is nice.
     if b.player_num==nil or ball1.state==ball_returning or is_owner(ball1, catcher1) then
         b.state = batter_batting
         return
@@ -454,7 +455,8 @@ function ball(pos, initial_state, is_owned_by)
     }
 end
 
-function simulate_ball_physics(b, fielders, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
+-- function simulate_ball_physics(b, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
+function simulate_ball_physics(b, on_bounce)
     -- declare some state.
     local spare1, spare2 = vec3(), vec3()
 
@@ -481,31 +483,30 @@ function simulate_ball_physics(b, fielders, catcher1, pitcher1, active_batter, s
         b.vel.x *= 0.8
         b.vel.z *= 0.8
 
-        evaluate_ball_bounced(b, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
+        on_bounce()
     end
 end
 
-function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, on_return_ball_catcher2pitcher)
-    assert(active_batter!=nil)
-    local result = is_fair(ball.pos)
+function bounce_ball(ball, num_strikes, catcher1, on_return_ball, on_strike, on_run)
+    local result = is_fair_territory(ball.pos)
     if not ball.has_bounced then
         if result == ball_is_foul then
-            if score.num_strikes < 2 then
+            if num_strikes < 2 then
                 log('strike!')
-                score.num_strikes += 1
+                on_strike()
             end
-            return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
+            return_ball_to_catcher(ball, catcher1, on_return_ball)
         elseif result == ball_is_home_run then
             log('home run!')
-            return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
-            score.num_runs += 1
+            return_ball_to_catcher(ball, catcher1, on_return_ball)
+            on_run()
         end
         ball.has_bounced = true
     else
         if result == ball_is_home_run then
             if ball.pos.y > home_run_y_threshold then
                 log('ground rule double') assert(false)
-                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball)
             else
                 -- hit the endfield walls. zero out velocity.
                 ball.vel.x = 0
@@ -513,19 +514,15 @@ function evaluate_ball_bounced(ball, catcher1, pitcher1, active_batter, score, o
                 ball.vel.z = 0
 
                 -- return ball after 1s.
-                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball)
             end
-        elseif ball.state != ball_returning then
+        else
             local len = length(ball.vel)
+
+            -- if ball has stopped,
             if len < 1 then
-                -- update the ball state.
-                ball.state = ball_returning
-
-                -- reset the batter's state.
-                active_batter.state = batter_batting
-
                 -- the ball has settled. return the ball to the catcher.
-                return_ball_to_catcher(ball, catcher1, on_return_ball_catcher2pitcher)
+                return_ball_to_catcher(ball, catcher1, on_return_ball)
             end
         end
     end

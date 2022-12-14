@@ -99,7 +99,7 @@ function update_game()
         hit_ball(ball1, batter1, swing_t, bases)
     end)
 
-    if ball1.state == ball_throwing then
+    if ball1.state == ball_throwing or ball1.state == ball_returning then
         update_ball_throwing(ball1, fielders, function(fielder1)
             catch_ball(ball1, fielder1, active_batter, catcher1, on_strike_score, on_return_ball)
         end)
@@ -108,8 +108,6 @@ function update_game()
             bounce_ball(ball1, score.num_strikes, catcher1, on_return_ball, on_strike_score, on_run_score)
         end)
     elseif ball1.state == ball_holding then
-        -- no-op.
-    elseif ball1.state == ball_returning then
         -- no-op.
     else
         assert(false, 'unhandled case')

@@ -157,6 +157,11 @@ function update_batter(b, ball1, bases, catcher1, on_hit)
     -- this has the effect of freezing the bat when there's a strike, which is nice.
     if b.player_num==nil or ball1.state==ball_returning or is_owner(ball1, catcher1) then
         b.state = batter_batting
+        if ball1.state==ball_returning then
+            -- unfreeze the bat.
+            b.t = 0
+            compute_batter_bat_endpoints(b)
+        end
         return
     end
 
@@ -206,6 +211,10 @@ function update_batter(b, ball1, bases, catcher1, on_hit)
         -- batter_swing_and_hit = 4 -- meaning that the bat has been swung, and the ball was hit.
         -- batter_swing_and_miss = 5 -- meaning that the bat has been swung, and the ball was missed.
     end
+
+    --
+    -- batter update logic.
+    --
 
     move_batter(b)
     compute_batter_bat_endpoints(b)
@@ -566,7 +575,7 @@ function return_ball_to_pitcher(b, fielder, pitcher)
     b.throw_duration = (distance2(start, _end) / 50) * 60
 
     -- set state.
-    b.state = ball_throwing
+    b.state = ball_returning
 end
 
 function is_strike(b)

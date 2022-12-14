@@ -154,20 +154,23 @@ function move_batter(b)
 end
 
 function update_batter(b, ball1, bases, catcher1, on_hit)
-    -- this has the effect of freezing the bat when there's a strike, which is nice.
-    if b.player_num==nil or ball1.state==ball_returning or is_owner(ball1, catcher1) then
-        b.state = batter_batting
-        if ball1.state==ball_returning then
-            -- unfreeze the bat.
-            b.t = 0
-            compute_batter_bat_endpoints(b)
-        end
-        return
-    end
 
     --
     -- perform state transitions.
     --
+
+    -- early return condition.
+    if b.player_num==nil or is_owner(ball1, catcher1) or ball1.state==ball_returning then
+        b.state = batter_batting
+
+        -- this has the effect of unfreezing the bat after a strike.
+        if ball1.state==ball_returning then
+            b.t = 0
+            compute_batter_bat_endpoints(b)
+        end
+
+        return
+    end
 
     if b.state == batter_batting then
         -- switch to charging state.
